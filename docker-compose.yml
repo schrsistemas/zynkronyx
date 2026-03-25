@@ -1,0 +1,38 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: zynkronyx-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: zynkronyx
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+    container_name: zynkronyx-backend
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/zynkronyx
+
+  frontend:
+    build: ./frontend
+    container_name: zynkronyx-frontend
+    restart: always
+    ports:
+      - "3001:3000"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
