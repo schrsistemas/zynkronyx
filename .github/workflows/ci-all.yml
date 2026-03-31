@@ -1,0 +1,39 @@
+name: Zynkronyx CI ALL (padrao unico)
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  full:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker (padrao)
+        run: docker build -f Dockerfile.prod.fix -t zynkronyx:ci .
+
+      - name: Run container
+        run: |
+          docker run -d -p 3000:3000 --name zci zynkronyx:ci
+
+      - name: Wait API
+        run: |
+          for i in {1..25}; do
+            echo "tentativa $i"
+            curl -s http://localhost:3000/health && exit 0
+            sleep 2
+          done
+          docker logs zci
+          exit 1
+
+      - name: Test endpoints
+        run: |
+          curl -f http://localhost:3000/health
+          curl -f -X POST http://localhost:3000/auth/login -H "Content-Type: application/json" -d '{"login":"ci"}'
+
+      - name: Cleanup
+        run: |
+          docker stop zci || true
+          docker rm zci || true
