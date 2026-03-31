@@ -1,0 +1,16 @@
+FROM node:18
+
+WORKDIR /app
+
+COPY backend ./
+
+# garante package.json
+RUN if [ -f package.basic.json ]; then cp package.basic.json package.json; fi
+
+# instala deps + firebird
+RUN npm install && npm install node-firebird
+
+EXPOSE 3000
+
+# log antes de subir
+CMD echo "Iniciando app..." && node src/app.production.js
