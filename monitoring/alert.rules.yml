@@ -1,0 +1,11 @@
+groups:
+- name: zynkronyx_alerts
+  rules:
+
+  - alert: API_DOWN
+    expr: up == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      description: "API fora do ar"
