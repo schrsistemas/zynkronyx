@@ -1,0 +1,41 @@
+name: Zynkronyx Docker CI
+
+on:
+  push:
+    branches: ["main", "release/**"]
+
+jobs:
+  docker-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        run: |
+          docker build -f Dockerfile.prod -t zynkronyx:latest .
+
+      - name: Run container
+        run: |
+          docker run -d -p 3000:3000 --name zynk_test zynkronyx:latest
+          sleep 10
+
+      - name: Test health endpoint
+        run: |
+          curl -f http://localhost:3000/health
+
+      - name: Test auth endpoint
+        run: |
+          curl -f -X POST http://localhost:3000/auth/login -H "Content-Type: application/json" -d '{"login":"ci"}'
+
+      - name: Stop container
+        run: |
+          docker stop zynk_test
+          docker rm zynk_test
+
+      - name: Done
+        run: echo "Docker CI OK"
