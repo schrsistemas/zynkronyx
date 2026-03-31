@@ -1,0 +1,46 @@
+name: Zynkronyx FULL CI V2 (robusto)
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install deps
+        run: |
+          cd backend
+          if [ -f package.json ]; then npm install; fi
+          if [ -f package.basic.json ]; then cp package.basic.json package.json && npm install; fi
+
+      - name: Start backend
+        run: |
+          cd backend
+          node src/app.production.js &
+
+      - name: Wait for API (retry)
+        run: |
+          for i in {1..20}; do
+            echo "Tentativa $i..."
+            curl -s http://localhost:3000/health && exit 0
+            sleep 2
+          done
+          echo "API não respondeu" && exit 1
+
+      - name: Test endpoints
+        run: |
+          curl -f http://localhost:3000/health
+          curl -f -X POST http://localhost:3000/auth/login -H "Content-Type: application/json" -d '{"login":"ci"}'
+
+      - name: Debug logs (if fail)
+        if: failure()
+        run: |
+          ps aux | grep node || true
