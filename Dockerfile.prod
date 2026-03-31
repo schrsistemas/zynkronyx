@@ -1,0 +1,15 @@
+FROM node:18
+
+WORKDIR /app
+
+# copia backend
+COPY backend ./
+
+# garante package.json
+RUN if [ -f package.basic.json ]; then cp package.basic.json package.json; fi
+
+RUN npm install
+
+EXPOSE 3000
+
+CMD ["node", "src/app.production.js"]
