@@ -1,0 +1,13 @@
+FROM node:18
+
+WORKDIR /app
+
+COPY backend ./
+
+RUN if [ -f package.basic.json ]; then cp package.basic.json package.json; fi
+
+RUN npm install
+
+EXPOSE 3000
+
+CMD ["node", "src/app.ci.js"]
