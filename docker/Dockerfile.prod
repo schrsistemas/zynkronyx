@@ -1,0 +1,11 @@
+FROM node:18
+
+WORKDIR /app
+
+COPY backend ./
+
+RUN chmod +x entrypoint.sh
+
+EXPOSE 3000
+
+CMD ["sh", "entrypoint.sh"]
