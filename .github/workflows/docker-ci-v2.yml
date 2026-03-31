@@ -1,0 +1,42 @@
+name: Zynkronyx Docker CI V2 (robusto)
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  docker-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -f Dockerfile.prod -t zynkronyx:test .
+
+      - name: Run container
+        run: |
+          docker run -d -p 3000:3000 --name ztest zynkronyx:test
+
+      - name: Wait for API (retry)
+        run: |
+          for i in {1..20}; do
+            echo "Tentativa $i..."
+            curl -s http://localhost:3000/health && exit 0
+            sleep 2
+          done
+          echo "API não respondeu" && exit 1
+
+      - name: Test endpoints
+        run: |
+          curl -f http://localhost:3000/health
+          curl -f -X POST http://localhost:3000/auth/login -H "Content-Type: application/json" -d '{"login":"ci"}'
+
+      - name: Logs (debug)
+        if: failure()
+        run: docker logs ztest
+
+      - name: Cleanup
+        run: |
+          docker stop ztest || true
+          docker rm ztest || true
