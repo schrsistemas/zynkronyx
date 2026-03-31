@@ -1,0 +1,51 @@
+name: Zynkronyx Docker + DB CI (robusto)
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  full-stack:
+    runs-on: ubuntu-latest
+
+    services:
+      firebird:
+        image: jacobalberty/firebird:3.0
+        ports:
+          - 3050:3050
+        env:
+          ISC_PASSWORD: masterkey
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -f Dockerfile.prod -t zynkronyx:test .
+
+      - name: Run container
+        run: |
+          docker run -d -p 3000:3000 --name zdbtest \
+            -e DB_HOST=localhost \
+            -e DB_PORT=3050 \
+            -e DB_USER=SYSDBA \
+            -e DB_PASSWORD=masterkey \
+            zynkronyx:test
+
+      - name: Wait for API (retry)
+        run: |
+          for i in {1..25}; do
+            echo "Tentativa $i..."
+            curl -s http://localhost:3000/health && exit 0
+            sleep 2
+          done
+          echo "API não respondeu" && docker logs zdbtest && exit 1
+
+      - name: Test endpoints
+        run: |
+          curl -f http://localhost:3000/health
+          curl -f -X POST http://localhost:3000/auth/login -H "Content-Type: application/json" -d '{"login":"ci"}'
+
+      - name: Cleanup
+        run: |
+          docker stop zdbtest || true
+          docker rm zdbtest || true
