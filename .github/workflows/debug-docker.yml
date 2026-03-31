@@ -1,0 +1,22 @@
+name: Debug Docker Filesystem
+
+on:
+  workflow_dispatch:
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image (no cache)
+        run: docker build --no-cache -f Dockerfile.prod.fix -t zynkronyx:debug .
+
+      - name: List filesystem inside container
+        run: |
+          docker run --rm zynkronyx:debug sh -c "echo '--- /app ---' && ls -R /app"
+
+      - name: Try start manually
+        run: |
+          docker run --rm zynkronyx:debug node src/app.production.js
