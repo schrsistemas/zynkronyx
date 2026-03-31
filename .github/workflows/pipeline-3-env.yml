@@ -1,0 +1,72 @@
+name: Zynkronyx Pipeline 3 Ambientes
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+
+  ci:
+    name: CI (rapido)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build CI
+        run: docker build -f Dockerfile.ci -t zynkronyx:ci .
+
+      - name: Run CI container
+        run: |
+          docker run -d -p 3000:3000 --name zci zynkronyx:ci
+
+      - name: Wait API
+        run: |
+          for i in {1..20}; do
+            curl -s http://localhost:3000/health && exit 0
+            sleep 2
+          done
+          docker logs zci
+          exit 1
+
+      - name: Test CI
+        run: |
+          curl -f http://localhost:3000/health
+
+  staging:
+    name: STAGING (real)
+    runs-on: ubuntu-latest
+    needs: ci
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build PROD
+        run: docker build -f Dockerfile.prod.fix -t zynkronyx:staging .
+
+      - name: Run STAGING
+        run: |
+          docker run -d -p 3001:3000 --name zstaging zynkronyx:staging
+
+      - name: Wait API
+        run: |
+          for i in {1..30}; do
+            curl -s http://localhost:3001/health && exit 0
+            sleep 2
+          done
+          docker logs zstaging
+          exit 1
+
+      - name: Test STAGING
+        run: |
+          curl -f http://localhost:3001/health
+
+  prod:
+    name: PROD (simulado)
+    runs-on: ubuntu-latest
+    needs: staging
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy simulado
+        run: echo "Deploy OK"
