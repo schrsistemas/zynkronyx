@@ -1,0 +1,38 @@
+name: Zynkronyx FULL CI
+
+on:
+  push:
+    branches: ["main", "release/**"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install backend deps
+        run: |
+          cd backend
+          if [ -f package.json ]; then npm install; fi
+          if [ -f package.basic.json ]; then cp package.basic.json package.json && npm install; fi
+
+      - name: Run backend
+        run: |
+          cd backend
+          node src/app.production.js &
+          sleep 5
+
+      - name: Test endpoints
+        run: |
+          curl -f http://localhost:3000/health
+          curl -f -X POST http://localhost:3000/auth/login -H "Content-Type: application/json" -d '{"login":"test"}'
+
+      - name: Done
+        run: echo "FULL CI OK"
