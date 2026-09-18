@@ -12,7 +12,7 @@ export default function Home() {
   const [section, setSection] = useState("overview");
   const [status, setStatus] = useState(null);
   const [capabilities, setCapabilities] = useState([]);
-  const [latency, setLatency] = useState(null);
+  const [latency, setLatency] = useState(null);\n  const [lastUpdated, setLastUpdated] = useState(null);\n  const [error, setError] = useState(null);
 
   useEffect(() => {
     let alive = true;
@@ -28,7 +28,7 @@ export default function Home() {
         if (!alive) return;
         setStatus(statusJson);
         setCapabilities(capJson.capabilities || []);
-        setLatency(Math.round(performance.now() - started));
+        setLatency(Math.round(performance.now() - started));\n        setLastUpdated(new Date());\n        setError(null);
       } catch (_) {
         if (alive) setStatus({ ok: false, service: "zynkronyx-api" });
       }
@@ -63,7 +63,7 @@ export default function Home() {
           <div><span className="eyebrow">CONTROL CENTER</span><h1>{title(section)}</h1></div>
           <div className="userChip">PUBLIC <span>●</span></div>
         </header>
-        {section === "overview" && <Overview status={status} latency={latency} services={serviceRows} capabilities={capabilities}/>}
+        {error && <div className="alert" role="alert">API indisponível: {error}</div>}\n        {section === "overview" && <Overview status={status} latency={latency} services={serviceRows} capabilities={capabilities} lastUpdated={lastUpdated}/>}
         {section === "services" && <Services services={serviceRows}/>}
         {section === "api" && <ApiExplorer/>}
         {section === "database" && <Database capabilities={capabilities}/>} 
@@ -77,7 +77,7 @@ function Nav({active,onClick,icon,children}) { return <button className={active?
 function title(s) { return ({overview:"System Overview",services:"Services",api:"API Explorer",database:"Database",sync:"Synchronization"})[s]; }
 function findCapability(list,name) { return list.find(x => x.name === name); }
 
-function Overview({status,latency,services,capabilities}) {
+function Overview({status,latency,services,capabilities,lastUpdated}) {
  return <div>
   <div className="hero">
     <div><span className={"pill " + (status?.ok ? "" : "warn")}>● {status?.ok ? "LIVE" : "CHECKING"}</span><h2>{status?.ok ? "Zynkronyx is running." : "Connecting to Zynkronyx."}</h2><p>Uma plataforma modular para conectar aplicações, dados e serviços.</p></div>
@@ -89,7 +89,7 @@ function Overview({status,latency,services,capabilities}) {
     <Stat title="Environment" value={status?.environment?.toUpperCase() || "PUBLIC"} note="serverless"/>
     <Stat title="Database" value={findCapability(capabilities,"database")?.status === "active" ? "D1" : "NEXT"} note="data layer"/>
   </div>
-  <section><div className="sectionTitle"><h3>Service health</h3><span>Live API data</span></div><div className="serviceGrid">{services.map(s=><div className="service" key={s[0]}><div className="serviceIcon">◆</div><div className="serviceName">{s[0]}</div><span className={"status " + (s[1]==="online"?"":"muted")}>{s[1]}</span><div className="serviceMeta">{s[2]}</div></div>)}</div></section>
+  <section><div className="sectionTitle"><h3>Service health</h3><span>{lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString()}` : "Live API data"}</span></div><div className="serviceGrid">{services.map(s=><div className="service" key={s[0]}><div className="serviceIcon">◆</div><div className="serviceName">{s[0]}</div><span className={"status " + (s[1]==="online"?"":"muted")}>{s[1]}</span><div className="serviceMeta">{s[2]}</div></div>)}</div></section>
   <section><div className="sectionTitle"><h3>Architecture</h3><span>Current foundation</span></div><div className="architecture"><div>CLIENTS<span>Delphi · Web · Android</span></div><b>→</b><div>EDGE API<span>Cloudflare Worker</span></div><b>→</b><div>DATA<span>Cloudflare D1</span></div></div></section>
  </div>
 }
