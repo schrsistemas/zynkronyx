@@ -45,7 +45,7 @@ test('login rejects an empty login', () => withServer(async () => {
   assert.equal(res.status, 400);
 }));
 
-test('business routes require bearer authentication', () => withServer(async () => {
+test('business routes reject unknown tenant API keys', () => withServer(async () => {
   const res = await request('GET', '/sync/out?ultima_data=2026-01-01', undefined, { 'x-api-key': 'ci' });
   assert.equal(res.status, 401);
 }));
