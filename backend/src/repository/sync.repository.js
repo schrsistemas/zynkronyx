@@ -74,3 +74,11 @@ exports.markError = async (id) => {
     WHERE ID = ?
   `, [id]);
 };
+
+exports.markProcessed = async (id) => {
+  await db.execute(`
+    UPDATE SYNC_STAGING
+    SET STATUS = 'S', PROCESSADO = 'S'
+    WHERE ID = ? AND STATUS = 'P'
+  `, [id]);
+};
