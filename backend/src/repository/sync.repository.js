@@ -44,21 +44,16 @@ exports.insertStaging = async (item) => {
 
   await db.execute(`
     INSERT INTO SYNC_STAGING
-      (EMPRESA_ID, TABELA, CHAVE, OPERACAO, PAYLOAD, DATA_RECEBIMENTO, PROCESSADO, TENTATIVAS, STATUS)
-    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 'N', 0, 'N')
+      (EMPRESA_ID, TABELA, CHAVE, OPERACAO, PAYLOAD, DATA_RECEBIMENTO, PROCESSADO, TENTATIVAS, STATUS, HASH_UNICO)
+    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 'N', 0, 'N', ?)
   `, [
     empresaId,
     item.tabela,
     item.chave ?? null,
     item.operacao,
-    payload
+    payload,
+    hashUnico
   ]);
-
-  await db.execute(`
-    UPDATE SYNC_STAGING
-    SET HASH_UNICO = ?
-    WHERE ID = (SELECT MAX(ID) FROM SYNC_STAGING WHERE EMPRESA_ID = ?)
-  `, [hashUnico, empresaId]);
 
   return { staged: true };
 };
