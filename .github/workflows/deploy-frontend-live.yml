@@ -1,0 +1,70 @@
+name: Deploy Control Center LIVE
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frontend-control-center-live
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 18
+          cache: npm
+          cache-dependency-path: frontend/package.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm install
+
+      - name: Build Control Center
+        working-directory: frontend
+        run: npm run build
+
+      - name: Verify build output
+        working-directory: frontend
+        run: test -f out/index.html
+
+      - name: Install Wrangler
+        run: npm install --global wrangler@latest
+
+      - name: Check/create Pages project
+        working-directory: frontend
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          projects="$(wrangler pages project list --json)"
+          if node -e 'const p=JSON.parse(process.argv[1]); process.exit(p.some(x => x.name === "zynkronyx-control-center") ? 0 : 1)' "$projects"; then
+            echo "Pages project exists."
+          else
+            wrangler pages project create zynkronyx-control-center --production-branch main
+          fi
+
+      - name: Deploy Pages
+        working-directory: frontend
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          wrangler pages deploy out --project-name zynkronyx-control-center --branch main
+
+      - name: Verify production URL
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 10 --retry-delay 3 --max-time 20             https://zynkronyx-control-center.pages.dev/             -o /tmp/control-center.html
+          grep -qi "Zynkronyx" /tmp/control-center.html
