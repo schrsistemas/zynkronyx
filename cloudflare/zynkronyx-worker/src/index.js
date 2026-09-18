@@ -1,5 +1,4 @@
 const VERSION = "0.3.0";
-const BACKEND_URL = (globalThis?.BACKEND_URL || "").replace(/\/$/, "");
 
 const SECURITY_HEADERS = {
   "content-type": "text/html; charset=UTF-8",
@@ -79,7 +78,7 @@ a{color:#e4e4e7}
 </html>`;
 
 export default {
-  async fetch(request) {
+  async fetch(request, env) {
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/+$/, "") || "/";
 
