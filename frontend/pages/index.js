@@ -56,6 +56,7 @@ export default function Home() {
           <Nav active={section==="database"} onClick={()=>setSection("database")} icon="▣">Database</Nav>
           <Nav active={section==="sync"} onClick={()=>setSection("sync")} icon="⇄">Sync</Nav>
           <Nav active={section==="monitoring"} onClick={()=>setSection("monitoring")} icon="◉">Monitoring</Nav>
+          <Nav active={section==="radar"} onClick={()=>setSection("radar")} icon="⌖">Radar</Nav>
           <Nav active={section==="devices"} onClick={()=>setSection("devices")} icon="⌁">Devices</Nav>
           <Nav active={section==="audit"} onClick={()=>setSection("audit")} icon="≡">Audit</Nav>
           <Nav active={section==="deploy"} onClick={()=>setSection("deploy")} icon="⇧">Deployments</Nav>
@@ -74,6 +75,7 @@ export default function Home() {
         {section === "database" && <Database capabilities={capabilities}/>} 
         {section === "sync" && <SyncConsole/>}
         {section === "monitoring" && <Monitoring status={status} latency={latency}/>} 
+        {section === "radar" && <Radar/>}
         {section === "devices" && <Devices/>}
         {section === "audit" && <Audit/>}
         {section === "deploy" && <Deployments/>}
@@ -84,7 +86,7 @@ export default function Home() {
 }
 
 function Nav({active,onClick,icon,children}) { return <button className={active?"active":""} onClick={onClick}>{icon} <span>{children}</span></button>; }
-function title(s) { return ({overview:"System Overview",services:"Services",api:"API Explorer",database:"Database",sync:"Synchronization",devices:"Device Integrations",audit:"Legal Audit",deploy:"Deployments",docs:"Documentation",monitoring:"Monitoring"})[s] || "Zynkronyx"; }
+function title(s) { return ({overview:"System Overview",services:"Services",api:"API Explorer",database:"Database",sync:"Synchronization",devices:"Device Integrations",audit:"Legal Audit",deploy:"Deployments",docs:"Documentation",monitoring:"Monitoring",radar:"Radar Visual"})[s] || "Zynkronyx"; }
 function findCapability(list,name) { return list.find(x => x.name === name); }
 
 function Overview({status,latency,services,capabilities}) {
@@ -156,6 +158,28 @@ function Devices() {
   <div className="panel"><div className="sectionTitle"><h3>Device Registry</h3><button onClick={load}>{loading?"Atualizando...":"Atualizar"}</button></div><p className="lead">Tenant atual · credenciais nunca aparecem na listagem.</p>
    {!rows.length&&!error?<div className="emptyState"><h2>Nenhum dispositivo retornado</h2><p>O painel não inventa dados.</p></div>:rows.map(d=><div className="row" key={d.DEVICE_ID}><div><strong>{d.DEVICE_ID}</strong><small>{d.NAME||"Sem nome"} · {d.DEVICE_TYPE} · protocolo {d.PROTOCOL_VERSION} · {d.LAST_SEEN||"nunca visto"}</small></div><span className={"status "+(d.STATUS==="A"?"":"muted")}>{d.STATUS==="A"?"active":"inactive"}</span><div><button disabled={action===("rotate:"+d.DEVICE_ID)} onClick={()=>rotate(d.DEVICE_ID)}>Rotacionar</button> <button disabled={action===("revoke:"+d.DEVICE_ID)} onClick={()=>revoke(d.DEVICE_ID)}>Revogar</button></div></div>)}
   </div>
+ </div>;
+}
+
+function Radar() {
+ const [devices,setDevices]=useState([]); const [error,setError]=useState(null); const [loading,setLoading]=useState(false);
+ async function load(){setLoading(true);setError(null);try{const r=await fetch(API+"/integration/devices",{headers:{"x-api-key":"demo","Authorization":"Bearer mock-token"},cache:"no-store"});const j=await r.json();if(!r.ok)throw new Error(j.erro||"Falha ao carregar radar");setDevices(j.devices||[])}catch(e){setError(e.message)}finally{setLoading(false)}}
+ useEffect(()=>{load()},[]);
+ const located=devices.filter(d=>Number.isFinite(Number(d.LAST_LATITUDE))&&Number.isFinite(Number(d.LAST_LONGITUDE)));
+ return <div>
+  <div className="hero"><div><span className="pill">RADAR VISUAL</span><h2>Device Radar</h2><p>Mapa operacional preparado para posições reportadas pelos dispositivos.</p></div><div className="heroVersion">{located.length}<br/><small>posições conhecidas</small></div></div>
+  <div className="panel radarPanel">
+   <div className="sectionTitle"><h3>Mapa</h3><button onClick={load}>{loading?"Atualizando...":"Atualizar"}</button></div>
+   {error&&<div className="resultBox">{error}</div>}
+   <div className="radarMap">
+    <div className="radarGrid"/>
+    <div className="radarSweep"/>
+    {located.map((d,i)=>{const lon=Number(d.LAST_LONGITUDE),lat=Number(d.LAST_LATITUDE);const x=((lon+180)/360)*100,y=((90-lat)/180)*100;return <div key={d.DEVICE_ID} className="radarPin" style={{left:x+"%",top:y+"%"}} title={d.DEVICE_ID}>●<span>{d.DEVICE_ID}</span></div>})}
+    {!located.length&&<div className="radarEmpty"><strong>Sem coordenadas reportadas</strong><small>O radar não cria posições fictícias. Quando um dispositivo enviar latitude/longitude válidas, o ponto será plotado automaticamente.</small></div>}
+   </div>
+   <div className="radarLegend"><span>● Ativo</span><span>{devices.length} dispositivos registrados</span><span>{located.length} com localização</span></div>
+  </div>
+  <div className="panel"><p className="lead">Privacidade e precisão</p><div className="row"><div><strong>Origem</strong><small>Somente coordenadas explicitamente enviadas pelo dispositivo.</small></div><span className="status">NO INFERENCE</span></div><div className="row"><div><strong>Firebird</strong><small>Localização é opcional e não substitui endereço residencial.</small></div><span className="status">COARSE-READY</span></div></div>
  </div>;
 }
 
