@@ -9,6 +9,8 @@ class SyncProcessor {
     let failed = 0;
     let unsupported = 0;
 
+    const maxAttempts = Number(process.env.SYNC_MAX_ATTEMPTS || 5);
+
     for (const row of rows) {
       try {
         await syncRepository.markProcessing(row.ID);
@@ -27,7 +29,8 @@ class SyncProcessor {
         applied += 1;
       } catch (error) {
         failed += 1;
-        await syncRepository.markError(row.ID).catch(() => {});
+        const permanent = Number(row.TENTATIVAS || 0) >= maxAttempts;
+        await syncRepository.markError(row.ID, { permanent }).catch(() => {});
       }
     }
 
