@@ -30,3 +30,18 @@ The canonical `database/full.sql` schema includes the credential fields required
 - `CREDENTIAL_CREATED_AT`
 
 The registry service stores only a hash of generated device credentials, never the plaintext credential.
+
+
+## Authentication contract
+
+Production protected routes require a configured bearer token. The token is never hardcoded in source.
+
+Required secrets/environment variables:
+- `AUTH_TOKEN`: random secret of at least 32 characters.
+- `AUTH_LOGIN`: administrative login identifier.
+- `AUTH_PASSWORD`: administrative password of at least 12 characters.
+- `AUTH_USER_ID`: optional numeric audit user id; defaults to 1.
+
+`POST /auth/login` validates the configured login/password and returns the configured bearer token. Protected routes compare the bearer token with a constant-time comparison. Missing production secrets produce a configuration error instead of silently accepting a mock token.
+
+The Control Center must obtain the token through the authenticated login flow; `mock-token` and `x-api-key: demo` are preview-only values and must not be used as production credentials.

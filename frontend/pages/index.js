@@ -13,6 +13,7 @@ export default function Home() {
   const [status, setStatus] = useState(null);
   const [capabilities, setCapabilities] = useState([]);
   const [latency, setLatency] = useState(null);
+  const [authVersion, setAuthVersion] = useState(0);
 
   useEffect(() => {
     let alive = true;
@@ -56,6 +57,7 @@ export default function Home() {
           <Nav active={section==="database"} onClick={()=>setSection("database")} icon="▣">Database</Nav>
           <Nav active={section==="sync"} onClick={()=>setSection("sync")} icon="⇄">Sync</Nav>
           <Nav active={section==="monitoring"} onClick={()=>setSection("monitoring")} icon="◉">Monitoring</Nav>
+          <Nav active={section==="security"} onClick={()=>setSection("security")} icon="⌑">Security</Nav>
           <Nav active={section==="radar"} onClick={()=>setSection("radar")} icon="⌖">Radar</Nav>
           <Nav active={section==="devices"} onClick={()=>setSection("devices")} icon="⌁">Devices</Nav>
           <Nav active={section==="audit"} onClick={()=>setSection("audit")} icon="≡">Audit</Nav>
@@ -75,6 +77,7 @@ export default function Home() {
         {section === "database" && <Database capabilities={capabilities}/>} 
         {section === "sync" && <SyncConsole/>}
         {section === "monitoring" && <Monitoring status={status} latency={latency}/>} 
+        {section === "security" && <Security onAuth={()=>setAuthVersion(v=>v+1)}/>}
         {section === "radar" && <Radar/>}
         {section === "devices" && <Devices/>}
         {section === "audit" && <Audit/>}
@@ -86,7 +89,8 @@ export default function Home() {
 }
 
 function Nav({active,onClick,icon,children}) { return <button className={active?"active":""} onClick={onClick}>{icon} <span>{children}</span></button>; }
-function title(s) { return ({overview:"System Overview",services:"Services",api:"API Explorer",database:"Database",sync:"Synchronization",devices:"Device Integrations",audit:"Legal Audit",deploy:"Deployments",docs:"Documentation",monitoring:"Monitoring",radar:"Radar Visual"})[s] || "Zynkronyx"; }
+function title(s) { return ({overview:"System Overview",services:"Services",api:"API Explorer",database:"Database",sync:"Synchronization",devices:"Device Integrations",audit:"Legal Audit",deploy:"Deployments",docs:"Documentation",monitoring:"Monitoring",radar:"Radar Visual",security:"Security"})[s] || "Zynkronyx"; }
+function authHeaders(){ if(typeof window==="undefined") return {}; const token=sessionStorage.getItem("zynkronyx_token"); const key=process.env.NEXT_PUBLIC_TENANT_API_KEY; return {...(key?{"x-api-key":key}:{}),...(token?{Authorization:"Bearer "+token}:{})}; }
 function findCapability(list,name) { return list.find(x => x.name === name); }
 
 function Overview({status,latency,services,capabilities}) {
@@ -123,7 +127,7 @@ function SyncConsole() {
   const [result, setResult] = useState(null);
   async function send() {
     try {
-      const response = await fetch(API+"/sync/in", {method:"POST", headers:{"Content-Type":"application/json","x-api-key":"demo"}, body:payload});
+      const response = await fetch(API+"/sync/in", {method:"POST", headers:{"Content-Type":"application/json",...authHeaders()}, body:payload});
       setResult(await response.json());
     } catch (error) { setResult({erro:error.message}); }
   }
@@ -136,7 +140,7 @@ function Devices() {
  const [rows,setRows]=useState([]); const [error,setError]=useState(null); const [loading,setLoading]=useState(false);
  const [form,setForm]=useState({device_id:"",device_type:"simulator",name:"",protocol_version:1,scopes:["events:write"]});
  const [credential,setCredential]=useState(null); const [action,setAction]=useState(null);
- const auth={headers:{"x-api-key":"demo","Authorization":"Bearer mock-token"}};
+ const auth={headers:authHeaders()};
  async function load(){setLoading(true);setError(null);try{const r=await fetch(API+"/integration/devices",{...auth,cache:"no-store"});const j=await r.json();if(!r.ok)throw new Error(j.erro||"Falha ao consultar dispositivos");setRows(j.devices||[]);}catch(e){setError(e.message)}finally{setLoading(false)}}
  useEffect(()=>{load()},[]);
  function change(e){setForm({...form,[e.target.name]:e.target.name==="protocol_version"?Number(e.target.value):e.target.value})}
@@ -163,7 +167,7 @@ function Devices() {
 
 function Radar() {
  const [devices,setDevices]=useState([]); const [error,setError]=useState(null); const [loading,setLoading]=useState(false);
- async function load(){setLoading(true);setError(null);try{const r=await fetch(API+"/integration/devices",{headers:{"x-api-key":"demo","Authorization":"Bearer mock-token"},cache:"no-store"});const j=await r.json();if(!r.ok)throw new Error(j.erro||"Falha ao carregar radar");setDevices(j.devices||[])}catch(e){setError(e.message)}finally{setLoading(false)}}
+ async function load(){setLoading(true);setError(null);try{const r=await fetch(API+"/integration/devices",{headers:authHeaders(),cache:"no-store"});const j=await r.json();if(!r.ok)throw new Error(j.erro||"Falha ao carregar radar");setDevices(j.devices||[])}catch(e){setError(e.message)}finally{setLoading(false)}}
  useEffect(()=>{load()},[]);
  const located=devices.filter(d=>Number.isFinite(Number(d.LAST_LATITUDE))&&Number.isFinite(Number(d.LAST_LONGITUDE)));
  return <div>
@@ -202,4 +206,21 @@ function Docs() { return <div className="panel"><p className="lead">Documentaç�
 function Database({capabilities}) {
  const db=findCapability(capabilities,"database");
  return <div className="emptyState"><div className="bigIcon">▣</div><h2>Data layer</h2><p>Status informado pela API: <strong>{db?.status || "planned"}</strong>. A camada de dados operacional alvo é Firebird. A interface exibirá dados reais quando a API autenticada de banco estiver disponível.</p><div className="progress"><span style={{width:db?.status==="active"?"100%":"42%"}}/></div><small>{db?.status==="active"?"Connected":"Foundation"}</small></div>
+}
+
+
+function Security({onAuth}) {
+ const [login,setLogin]=useState(""); const [password,setPassword]=useState(""); const [message,setMessage]=useState(null); const [loading,setLoading]=useState(false);
+ const logged=typeof window!=="undefined"&&!!sessionStorage.getItem("zynkronyx_token");
+ async function submit(e){e.preventDefault();setLoading(true);setMessage(null);try{const r=await fetch(API+"/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({login,password})});const j=await r.json();if(!r.ok)throw new Error(j.erro||"Falha no login");sessionStorage.setItem("zynkronyx_token",j.token);setPassword("");setMessage("Sessão autenticada neste navegador.");onAuth?.()}catch(e){setMessage(e.message)}finally{setLoading(false)}}
+ function logout(){sessionStorage.removeItem("zynkronyx_token");setMessage("Sessão encerrada.");onAuth?.()}
+ return <div>
+  <div className="hero"><div><span className="pill">AUTHENTICATION</span><h2>Security Center</h2><p>Credenciais de produção são obtidas pelo endpoint de login; nenhum bearer token é mantido no código da interface.</p></div><div className="heroVersion">{logged?"AUTHENTICATED":"SIGNED OUT"}<br/><small>sessionStorage</small></div></div>
+  <div className="panel securityPanel">
+   <div className="sectionTitle"><h3>{logged?"Sessão atual":"Entrar"}</h3><span>tenant key via NEXT_PUBLIC_TENANT_API_KEY</span></div>
+   {!logged?<form className="securityForm" onSubmit={submit}><input value={login} onChange={e=>setLogin(e.target.value)} placeholder="Login" autoComplete="username" required/><input value={password} onChange={e=>setPassword(e.target.value)} type="password" placeholder="Senha" autoComplete="current-password" required/><button type="submit">{loading?"Autenticando...":"Entrar"}</button></form>:<div className="securityActions"><button onClick={logout}>Encerrar sessão</button></div>}
+   {message&&<div className="resultBox">{message}</div>}
+  </div>
+  <div className="panel"><div className="row"><div><strong>Bearer token</strong><small>Recebido somente após login e mantido na sessão do navegador.</small></div><span className="status">NO MOCK</span></div><div className="row"><div><strong>Tenant API key</strong><small>Configuração pública do Control Center; nunca usar valor de demonstração em produção.</small></div><span className={process.env.NEXT_PUBLIC_TENANT_API_KEY?"status":"status muted"}>{process.env.NEXT_PUBLIC_TENANT_API_KEY?"CONFIGURED":"NOT CONFIGURED"}</span></div></div>
+ </div>;
 }
