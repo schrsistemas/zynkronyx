@@ -1,4 +1,5 @@
-const VERSION = "0.2.2";
+const VERSION = "0.3.0";
+const BACKEND_URL = (globalThis?.BACKEND_URL || "").replace(/\/$/, "");
 
 const SECURITY_HEADERS = {
   "content-type": "text/html; charset=UTF-8",
@@ -21,7 +22,7 @@ function json(data, status = 200) {
   });
 }
 
-function html() {
+function corsHeaders(request) {\n  const origin = request.headers.get("Origin");\n  return { "access-control-allow-origin": origin || "*", "access-control-allow-headers": "Authorization, Content-Type, x-api-key, x-device-id, x-device-credential, x-correlation-id", "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS", "access-control-max-age": "86400" };\n}\n\nfunction html() {
   return new Response(HTML, { headers: SECURITY_HEADERS });
 }
 
