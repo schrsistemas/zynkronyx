@@ -80,7 +80,7 @@ a{color:#e4e4e7}
 export default {
   async fetch(request) {
     const url = new URL(request.url);
-    const path = url.pathname.replace(/\\/+$/, "") || "/";
+    const path = url.pathname.replace(/\/+$/, "") || "/";
 
     if (request.method !== "GET" && request.method !== "HEAD") {
       return json({ ok: false, error: "METHOD_NOT_ALLOWED" }, 405);
