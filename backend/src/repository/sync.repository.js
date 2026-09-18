@@ -37,6 +37,18 @@ exports.fetchDelta = async (ultimaData, { limit = 500 } = {}) => {
   }));
 };
 
+exports.insertStagingTx = async (tx, item) => {
+  const payload = stablePayload(item);
+  const hashUnico = item.hash_unico ?? item.hashUnico ?? payloadHash(item);
+  const empresaId = item.empresa_id ?? item.empresaId ?? 1;
+  await tx.execute(`
+    INSERT INTO SYNC_STAGING
+      (EMPRESA_ID, TABELA, CHAVE, OPERACAO, PAYLOAD, DATA_RECEBIMENTO, PROCESSADO, TENTATIVAS, STATUS, HASH_UNICO)
+    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 'N', 0, 'N', ?)
+  `, [empresaId, item.tabela, item.chave ?? null, item.operacao, payload, hashUnico]);
+  return { staged: true, hash_unico: hashUnico };
+};
+
 exports.insertStaging = async (item) => {
   const payload = stablePayload(item);
   const hashUnico = item.hash_unico ?? item.hashUnico ?? payloadHash(item);
