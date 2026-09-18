@@ -4,4 +4,5 @@ const c=require('../controllers/device.registry.controller');
 router.post('/',c.register);
 router.get('/',c.list);
 router.post('/:deviceId/revoke',c.revoke);
+router.post('/:deviceId/rotate',c.rotate);
 module.exports=router;
