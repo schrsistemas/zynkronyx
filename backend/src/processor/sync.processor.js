@@ -1,5 +1,6 @@
 const syncRepository = require('../repository/sync.repository');
 const syncHandlers = require('./sync.handler.registry');
+const db = require('../services/db.firebird.service');
 
 class SyncProcessor {
   async process({ limit = 100 } = {}) {
@@ -24,8 +25,14 @@ class SyncProcessor {
           continue;
         }
 
-        await handler(row);
-        await syncRepository.markProcessed(row.ID);
+        await db.withTransaction(async (tx) => {
+          await handler(row, tx);
+          await tx.execute(`
+            UPDATE SYNC_STAGING
+            SET STATUS = 'S', PROCESSADO = 'S'
+            WHERE ID = ? AND STATUS = 'P'
+          `, [row.ID]);
+        });
         applied += 1;
       } catch (error) {
         failed += 1;
