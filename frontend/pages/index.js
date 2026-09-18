@@ -57,6 +57,7 @@ export default function Home() {
           <Nav active={section==="sync"} onClick={()=>setSection("sync")} icon="⇄">Sync</Nav>
           <Nav active={section==="monitoring"} onClick={()=>setSection("monitoring")} icon="◉">Monitoring</Nav>
           <Nav active={section==="audit"} onClick={()=>setSection("audit")} icon="≡">Audit</Nav>
+          <Nav active={section==="radar"} onClick={()=>setSection("radar")} icon="⌖">Mapa Radar</Nav>
           <Nav active={section==="docs"} onClick={()=>setSection("docs")} icon="?">Docs</Nav>
         </nav>
         <div className="sideBottom"><span className={"dot " + (status?.ok ? "online" : "")}/> {status?.ok ? "All systems operational" : "Checking services..."}</div>
@@ -73,6 +74,7 @@ export default function Home() {
         {section === "sync" && <SyncConsole/>}
         {section === "monitoring" && <Monitoring status={status} latency={latency}/>} 
         {section === "audit" && <Audit/>}
+        {section === "radar" && <Radar/>}
         {section === "docs" && <Docs/>}
       </main>
     </div>
@@ -80,7 +82,7 @@ export default function Home() {
 }
 
 function Nav({active,onClick,icon,children}) { return <button className={active?"active":""} onClick={onClick}>{icon} <span>{children}</span></button>; }
-function title(s) { return ({overview:"System Overview",services:"Services",api:"API Explorer",database:"Database",sync:"Synchronization"})[s]; }
+function title(s) { return ({overview:"System Overview",services:"Services",api:"API Explorer",database:"Database",sync:"Synchronization",radar:"Mapa Radar",monitoring:"Monitoring",audit:"Audit",docs:"Docs"})[s] || "Zynkronyx"; }
 function findCapability(list,name) { return list.find(x => x.name === name); }
 
 function Overview({status,latency,services,capabilities}) {
@@ -133,4 +135,22 @@ function Docs() { return <div className="panel"><p className="lead">Documentaç�
 function Database({capabilities}) {
  const db=findCapability(capabilities,"database");
  return <div className="emptyState"><div className="bigIcon">▣</div><h2>Data layer</h2><p>Status informado pela API: <strong>{db?.status || "planned"}</strong>. A camada de dados operacional alvo é Firebird. A interface exibirá dados reais quando a API autenticada de banco estiver disponível.</p><div className="progress"><span style={{width:db?.status==="active"?"100%":"42%"}}/></div><small>{db?.status==="active"?"Connected":"Foundation"}</small></div>
+}
+
+function Radar() {
+  const [devices, setDevices] = useState([]);
+  const [error, setError] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    fetch(API + "/integration/radar", { headers: { "x-location-precision": "coarse" }, cache: "no-store" })
+      .then(r => r.ok ? r.json() : r.json().then(x => Promise.reject(new Error(x.erro || "Radar indisponível"))))
+      .then(x => { if (alive) setDevices(x.devices || []); })
+      .catch(e => { if (alive) setError(e.message); });
+    return () => { alive = false; };
+  }, []);
+  return <div className="panel"><p className="lead">Última localização dos dispositivos ativos. Precisão reduzida por padrão para Privacy by Design.</p>
+    {error && <div className="emptyState"><h2>Radar indisponível</h2><p>{error}</p></div>}
+    {!error && devices.length === 0 && <div className="emptyState"><div className="bigIcon">⌖</div><h2>Nenhum dispositivo localizado</h2><p>O radar não inventa posições: somente eventos reais com localização registrada aparecem.</p></div>}
+    {devices.map(d => <div className="row" key={d.device_id}><div><strong>{d.name || d.device_id}</strong><small>{d.device_type} · {d.last_seen || "sem comunicação"}</small></div><span className="status">{d.location ? d.location.latitude + ", " + d.location.longitude : "sem GPS"}</span></div>)}
+  </div>;
 }
