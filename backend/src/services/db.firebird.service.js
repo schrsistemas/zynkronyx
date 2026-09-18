@@ -16,10 +16,6 @@ class FirebirdService {
   async withTransaction(work) {
     return connection.withTransaction(work);
   }
-
-  async transaction(work) {
-    return connection.transaction(work);
-  }
 }
 
 module.exports = new FirebirdService();
