@@ -1,28 +1,43 @@
-name: Deploy Produção Automático
+name: Verify Production Image
 
 on:
   workflow_run:
-    workflows: ["Zynkronyx Pipeline 3 Ambientes FINAL"]
-    types:
-      - completed
+    workflows: ["Build and Publish Backend Image"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  deploy:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+  verify:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
-      - name: Build imagem
-        run: docker build -f Dockerfile.prod.fix -t zynkronyx:latest .
+      - name: Build production image
+        run: docker build -f Dockerfile.prod.fix -t zynkronyx:production .
 
-      - name: Deploy local (simulado)
+      - name: Runtime smoke test
         run: |
-          docker stop zynkronyx_app || true
-          docker rm zynkronyx_app || true
-          docker run -d -p 80:3000 --name zynkronyx_app zynkronyx:latest
+          set -e
+          docker run -d -p 3000:3000 --name zynkronyx-production-smoke -e SYNC_PROCESSOR_ENABLED=false zynkronyx:production
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:3000/health; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs zynkronyx-production-smoke
+          exit 1
 
-      - name: Status
-        run: echo "Deploy realizado com sucesso"
+      - name: Cleanup
+        if: always()
+        run: docker rm -f zynkronyx-production-smoke || true
+
+      - name: Deployment boundary
+        run: |
+          echo "Production image verified."
+          echo "Persistent runtime deployment requires an externally configured hosting target."
