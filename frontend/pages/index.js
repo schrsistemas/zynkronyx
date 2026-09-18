@@ -163,23 +163,25 @@ function Devices() {
 
 function Radar() {
  const [devices,setDevices]=useState([]); const [error,setError]=useState(null); const [loading,setLoading]=useState(false);
+ const [type,setType]=useState("all"); const [activeOnly,setActiveOnly]=useState(false);
  async function load(){setLoading(true);setError(null);try{const r=await fetch(API+"/integration/devices",{headers:{"x-api-key":"demo","Authorization":"Bearer mock-token"},cache:"no-store"});const j=await r.json();if(!r.ok)throw new Error(j.erro||"Falha ao carregar radar");setDevices(j.devices||[])}catch(e){setError(e.message)}finally{setLoading(false)}}
  useEffect(()=>{load()},[]);
- const located=devices.filter(d=>Number.isFinite(Number(d.LAST_LATITUDE))&&Number.isFinite(Number(d.LAST_LONGITUDE)));
+ const located=devices.filter(d=>Number.isFinite(Number(d.LAST_LATITUDE))&&Number.isFinite(Number(d.LAST_LONGITUDE))).filter(d=>type==="all"||d.DEVICE_TYPE===type).filter(d=>!activeOnly||d.STATUS==="A");
+ const types=[...new Set(devices.map(d=>d.DEVICE_TYPE).filter(Boolean))].sort();
  return <div>
-  <div className="hero"><div><span className="pill">RADAR VISUAL</span><h2>Device Radar</h2><p>Mapa operacional preparado para posições reportadas pelos dispositivos.</p></div><div className="heroVersion">{located.length}<br/><small>posições conhecidas</small></div></div>
+  <div className="hero"><div><span className="pill">RADAR VISUAL</span><h2>Device Radar</h2><p>Mapa operacional preparado para posições reportadas pelos dispositivos.</p></div><div className="heroVersion">{located.length}<br/><small>posições filtradas</small></div></div>
   <div className="panel radarPanel">
-   <div className="sectionTitle"><h3>Mapa</h3><button onClick={load}>{loading?"Atualizando...":"Atualizar"}</button></div>
+   <div className="sectionTitle"><h3>Mapa operacional</h3><button onClick={load}>{loading?"Atualizando...":"Atualizar"}</button></div>
+   <div className="radarControls"><label>Tipo<select value={type} onChange={e=>setType(e.target.value)}><option value="all">Todos</option>{types.map(x=><option key={x}>{x}</option>)}</select></label><label className="checkLabel"><input type="checkbox" checked={activeOnly} onChange={e=>setActiveOnly(e.target.checked)}/> somente ativos</label></div>
    {error&&<div className="resultBox">{error}</div>}
-   <div className="radarMap">
-    <div className="radarGrid"/>
-    <div className="radarSweep"/>
-    {located.map((d,i)=>{const lon=Number(d.LAST_LONGITUDE),lat=Number(d.LAST_LATITUDE);const x=((lon+180)/360)*100,y=((90-lat)/180)*100;return <div key={d.DEVICE_ID} className="radarPin" style={{left:x+"%",top:y+"%"}} title={d.DEVICE_ID}>●<span>{d.DEVICE_ID}</span></div>})}
-    {!located.length&&<div className="radarEmpty"><strong>Sem coordenadas reportadas</strong><small>O radar não cria posições fictícias. Quando um dispositivo enviar latitude/longitude válidas, o ponto será plotado automaticamente.</small></div>}
+   <div className="radarMap" aria-label="Radar geográfico de dispositivos">
+    <div className="radarGrid"/><div className="radarSweep"/>
+    {located.map(d=>{const lon=Number(d.LAST_LONGITUDE),lat=Number(d.LAST_LATITUDE);const x=((lon+180)/360)*100,y=((90-lat)/180)*100;return <button key={d.DEVICE_ID} className="radarPin" style={{left:x+"%",top:y+"%"}} title={d.DEVICE_ID+" · "+d.DEVICE_TYPE} onClick={()=>window.alert(d.DEVICE_ID+"\n"+d.DEVICE_TYPE+"\n"+lat.toFixed(6)+", "+lon.toFixed(6))}>●<span>{d.DEVICE_ID}</span></button>})}
+    {!located.length&&<div className="radarEmpty"><strong>Sem coordenadas para este filtro</strong><small>O radar não cria posições fictícias. Pontos aparecem somente quando o dispositivo reporta latitude/longitude válidas.</small></div>}
    </div>
-   <div className="radarLegend"><span>● Ativo</span><span>{devices.length} dispositivos registrados</span><span>{located.length} com localização</span></div>
+   <div className="radarLegend"><span>● Posição reportada</span><span>{devices.length} registrados</span><span>{located.length} exibidos</span></div>
   </div>
-  <div className="panel"><p className="lead">Privacidade e precisão</p><div className="row"><div><strong>Origem</strong><small>Somente coordenadas explicitamente enviadas pelo dispositivo.</small></div><span className="status">NO INFERENCE</span></div><div className="row"><div><strong>Firebird</strong><small>Localização é opcional e não substitui endereço residencial.</small></div><span className="status">COARSE-READY</span></div></div>
+  <div className="panel"><p className="lead">Privacidade e precisão</p><div className="row"><div><strong>Origem</strong><small>Somente coordenadas explicitamente enviadas pelo dispositivo.</small></div><span className="status">NO INFERENCE</span></div><div className="row"><div><strong>Projeção</strong><small>Visualização lon/lat operacional; não é mapa cartográfico de ruas.</small></div><span className="status">GEO</span></div></div>
  </div>;
 }
 
@@ -195,7 +197,46 @@ function Deployments() {
  </div>;
 }
 
-function Audit() { return <div className="panel"><p className="lead">Auditoria será alimentada pelo AUDIT_LOG do backend. Nenhum evento fictício é exibido.</p><div className="emptyState"><div className="bigIcon">≡</div><h2>Audit stream</h2><p>Interface preparada. A conexão real depende da API autenticada de auditoria.</p></div></div>; }
+function Audit() {
+ const [rows,setRows]=useState([]); const [cursor,setCursor]=useState(0); const [loading,setLoading]=useState(false); const [error,setError]=useState(null); const [selected,setSelected]=useState(null);
+ const [filters,setFilters]=useState({device_id:"",event_type:"",resultado:""});
+ const auth={headers:{"x-api-key":"demo","Authorization":"Bearer mock-token"}};
+ async function load(nextCursor=0){
+  setLoading(true);setError(null);
+  try{
+   const qs=new URLSearchParams({limit:"50",cursor:String(nextCursor)});
+   if(filters.device_id)qs.set("device_id",filters.device_id);
+   if(filters.event_type)qs.set("event_type",filters.event_type);
+   if(filters.resultado)qs.set("resultado",filters.resultado);
+   const r=await fetch(API+"/audit/events?"+qs.toString(),{...auth,cache:"no-store"});
+   const j=await r.json(); if(!r.ok)throw new Error(j.erro||"Falha ao consultar auditoria");
+   setRows(j.events||j.rows||[]); setCursor(Number(j.next_cursor||0));
+  }catch(e){setError(e.message);setRows([])}finally{setLoading(false)}
+ }
+ useEffect(()=>{load(0)},[]);
+ function apply(e){e.preventDefault();load(0)}
+ return <div>
+  <div className="panel">
+   <div className="sectionTitle"><h3>Filtros da trilha</h3><span>LEGAL_EVENT_LOG · tenant-scoped</span></div>
+   <form className="auditFilters" onSubmit={apply}>
+    <input placeholder="device_id" value={filters.device_id} onChange={e=>setFilters({...filters,device_id:e.target.value})}/>
+    <input placeholder="event_type" value={filters.event_type} onChange={e=>setFilters({...filters,event_type:e.target.value})}/>
+    <input placeholder="resultado" value={filters.resultado} onChange={e=>setFilters({...filters,resultado:e.target.value})}/>
+    <button type="submit">{loading?"Consultando...":"Consultar"}</button>
+   </form>
+   {error&&<div className="resultBox">{error}</div>}
+  </div>
+  <div className="panel auditStream">
+   <div className="sectionTitle"><h3>Eventos técnicos</h3><span>{rows.length} retornados</span></div>
+   {!rows.length&&!loading?<div className="emptyState"><div className="bigIcon">≡</div><h2>Nenhum evento retornado</h2><p>A interface mostra somente registros reais da API autenticada.</p></div>:rows.map((e,i)=><button className="auditRow" key={(e.EVENT_ID||e.event_id||i)+":"+i} onClick={()=>setSelected(e)}>
+    <div><strong>{e.EVENT_TYPE||e.event_type||"event"}</strong><small>{e.EVENT_ID||e.event_id} · {e.DEVICE_ID||e.device_id||"server"} · {e.SERVER_TIMESTAMP||e.server_timestamp||"—"}</small></div>
+    <span className="status">{e.RESULTADO||e.resultado||"—"}</span><b>›</b>
+   </button>)}
+   <div className="auditPager"><button disabled={!cursor||loading} onClick={()=>load(cursor)}>Carregar próxima página</button></div>
+  </div>
+  {selected&&<div className="panel auditDetail"><div className="sectionTitle"><h3>Evento {selected.EVENT_ID||selected.event_id}</h3><button onClick={()=>setSelected(null)}>Fechar</button></div><pre className="resultBox">{JSON.stringify(selected,null,2)}</pre></div>}
+ </div>;
+}
 
 function Docs() { return <div className="panel"><p className="lead">Documentação operacional do projeto.</p><div className="row"><div><strong>Architecture</strong><small>Fluxos, componentes e responsabilidades</small></div><span className="status">docs/</span></div><div className="row"><div><strong>Build ALL</strong><small>Critérios de implementação e deploy</small></div><span className="status">BUILD-ALL</span></div><div className="row"><div><strong>API</strong><small>Endpoints públicos atuais</small></div><span className="status">LIVE</span></div></div>; }
 
