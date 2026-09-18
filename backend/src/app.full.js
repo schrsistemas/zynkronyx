@@ -12,13 +12,19 @@ const authRoutes = require('./routes/auth.basic');
 
 app.use(express.json());
 app.use(rateLimit);
-app.use(tenant);
 
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
+  res.json({
+    status: 'ok',
+    service: 'zynkronyx',
+    timestamp: new Date().toISOString()
+  });
 });
 
+// Login e health sao endpoints de entrada e nao dependem de tenant/token.
 app.use('/auth', authRoutes);
+
+app.use(tenant);
 app.use('/sync', auth, syncRoutes);
 app.use('/admin', auth, adminRoutes);
 
