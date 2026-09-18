@@ -62,9 +62,10 @@ exports.fetchPending = async (limit = 100) => {
   const safeLimit = Number.isInteger(limit) && limit > 0 ? Math.min(limit, 1000) : 100;
   const rows = await db.query(`
     SELECT FIRST ${safeLimit}
-      ID, EMPRESA_ID, TABELA, CHAVE, OPERACAO, PAYLOAD, TENTATIVAS, STATUS
+      ID, EMPRESA_ID, TABELA, CHAVE, OPERACAO, PAYLOAD, TENTATIVAS, STATUS, DATA_RECEBIMENTO
     FROM SYNC_STAGING
     WHERE STATUS = 'N'
+       OR (STATUS = 'P' AND DATA_RECEBIMENTO < DATEADD(-1 MINUTE TO CURRENT_TIMESTAMP))
     ORDER BY ID
   `);
   return rows.map(row => ({ ...row, payload: parsePayload(row) }));
@@ -74,16 +75,16 @@ exports.markProcessing = async (id) => {
   await db.execute(`
     UPDATE SYNC_STAGING
     SET STATUS = 'P', TENTATIVAS = COALESCE(TENTATIVAS, 0) + 1
-    WHERE ID = ? AND STATUS = 'N'
+    WHERE ID = ? AND (STATUS = 'N' OR (STATUS = 'P' AND DATA_RECEBIMENTO < DATEADD(-1 MINUTE TO CURRENT_TIMESTAMP)))
   `, [id]);
 };
 
-exports.markError = async (id) => {
+exports.markError = async (id, { permanent = false } = {}) => {
   await db.execute(`
     UPDATE SYNC_STAGING
-    SET STATUS = 'E'
+    SET STATUS = ?, PROCESSADO = CASE WHEN ? = 'S' THEN 'N' ELSE PROCESSADO END
     WHERE ID = ?
-  `, [id]);
+  `, [permanent ? 'E' : 'N', permanent ? 'S' : 'N', id]);
 };
 
 exports.markProcessed = async (id) => {
