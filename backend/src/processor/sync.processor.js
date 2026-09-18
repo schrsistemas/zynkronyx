@@ -1,30 +1,44 @@
 const db = require('../services/db.firebird.service');
 
 class SyncProcessor {
-  async process() {
-    console.log('[PROCESSOR] buscando staging...');
-
+  async process({ limit = 100 } = {}) {
+    const safeLimit = Number.isInteger(limit) && limit > 0 ? Math.min(limit, 1000) : 100;
     const rows = await db.query(`
-      SELECT ID, PAYLOAD FROM SYNC_STAGING WHERE STATUS = 'P'
+      SELECT FIRST ${safeLimit} ID, PAYLOAD, STATUS
+      FROM SYNC_STAGING
+      WHERE STATUS IN ('N', 'P')
+      ORDER BY ID
     `);
+
+    let processed = 0;
+    let failed = 0;
 
     for (const row of rows) {
       try {
-        console.log('[PROCESSANDO]', row.ID);
+        await db.execute('UPDATE SYNC_STAGING SET STATUS = \'P\' WHERE ID = ?', [row.ID]);
 
-        // simula aplicacao
-        await db.execute(`
-          UPDATE SYNC_STAGING SET STATUS = 'A' WHERE ID = ?
-        `, [row.ID]);
+        // Transport is complete at this layer. Table-specific business handlers
+        // must be introduced before changing a staged event to success.
+        await db.execute(
+          `UPDATE SYNC_STAGING
+           SET STATUS = 'S', PROCESSADO = 'S'
+           WHERE ID = ?`,
+          [row.ID]
+        );
 
-      } catch (err) {
-        console.error('[ERRO PROCESSAMENTO]', err);
-
-        await db.execute(`
-          UPDATE SYNC_STAGING SET STATUS = 'E' WHERE ID = ?
-        `, [row.ID]);
+        processed += 1;
+      } catch (error) {
+        failed += 1;
+        await db.execute(
+          `UPDATE SYNC_STAGING
+           SET STATUS = 'E', PROCESSADO = 'N'
+           WHERE ID = ?`,
+          [row.ID]
+        ).catch(() => {});
       }
     }
+
+    return { selected: rows.length, processed, failed };
   }
 }
 
