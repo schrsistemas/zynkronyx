@@ -7,7 +7,8 @@ uses
   DBU.Connection,
   DBU.Query,
   DBU.Transaction,
-  DBU.Driver;
+  DBU.Driver,
+  DBU.SQL;
 
 implementation
 
