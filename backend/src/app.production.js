@@ -10,6 +10,8 @@ const syncRoutes = require('./routes/sync.routes');
 const deviceRoutes = require('./routes/device.routes');
 const adminRoutes = require('./routes/admin.basic');
 const authRoutes = require('./routes/auth.basic');
+const deviceRegistryRoutes = require('./routes/device.registry.routes');
+const auditRoutes = require('./routes/audit.routes');
 
 const app = express();
 
@@ -28,6 +30,8 @@ app.use('/auth', authRoutes);
 app.use(tenant);
 app.use('/sync', auth, syncRoutes);
 app.use('/integration', auth, deviceRoutes);
+app.use('/integration/devices', auth, deviceRegistryRoutes);
+app.use('/audit', auth, auditRoutes);
 app.use('/admin', auth, adminRoutes);
 
 app.get('/metrics', (req, res) => res.type('text/plain').send('metrics ok'));
