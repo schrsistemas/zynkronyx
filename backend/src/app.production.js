@@ -11,7 +11,7 @@ const syncRoutes = require('./routes/sync');
 const adminRoutes = require('./routes/admin.basic');
 const authRoutes = require('./routes/auth.basic');
 
-const processorRunner = require('./processor/runner');
+const processorRunner = const processorRunner = require('./processor/runner');
 
 app.use(express.json());
 app.use(rateLimit);
@@ -38,7 +38,9 @@ app.get('/metrics', (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 
-const server = app.listen(PORT, () => {
+const server = processorRunner.start();
+
+app.listen(PORT, () => {
   logger.info('API PROD rodando na porta ' + PORT);
   processorRunner.start();
 });
