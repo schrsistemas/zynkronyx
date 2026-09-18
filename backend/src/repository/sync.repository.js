@@ -59,6 +59,7 @@ exports.insertStaging = async (item) => {
 };
 
 exports.fetchPending = async (limit = 100) => {
+  const leaseSeconds = Math.max(30, Math.min(Number(process.env.SYNC_LEASE_SECONDS || 300), 86400));
   const safeLimit = Number.isInteger(limit) && limit > 0 ? Math.min(limit, 1000) : 100;
   const rows = await db.query(`
     SELECT FIRST ${safeLimit}
@@ -66,13 +67,14 @@ exports.fetchPending = async (limit = 100) => {
       DATA_RECEBIMENTO, DATA_PROCESSAMENTO, WORKER_ID
     FROM SYNC_STAGING
     WHERE STATUS = 'N'
-       OR (STATUS = 'P' AND DATA_PROCESSAMENTO < DATEADD(-1 MINUTE TO CURRENT_TIMESTAMP))
+       OR (STATUS = 'P' AND DATA_PROCESSAMENTO < DATEADD(-${leaseSeconds} SECOND TO CURRENT_TIMESTAMP))
     ORDER BY ID
   `);
   return rows.map(row => ({ ...row, payload: parsePayload(row) }));
 };
 
 exports.markProcessing = async (id, workerId = 'zynkronyx') => {
+  const leaseSeconds = Math.max(30, Math.min(Number(process.env.SYNC_LEASE_SECONDS || 300), 86400));
   const rows = await db.query(`
     UPDATE SYNC_STAGING
     SET STATUS = 'P',
