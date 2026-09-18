@@ -7,6 +7,14 @@ module.exports = requiredScope => async (req, res, next) => {
   const credential = req.headers['x-device-credential'];
 
   if (!deviceId || !credential) {
+    await securityAudit.record({
+      tenantId: req.tenant.id,
+      deviceId: deviceId || null,
+      action: 'DEVICE_AUTH',
+      result: 'DENIED',
+      correlationId,
+      metadata: { reason: 'missing_credential' }
+    });
     return res.status(401).json({ erro: 'Credencial do dispositivo obrigatoria' });
   }
 
