@@ -1,0 +1,43 @@
+# Production topology for a persistent host.
+# The host must provide the Firebird database file through FIREBIRD_DATABASE.
+# The backend image is published by GitHub Actions to GHCR.
+
+services:
+  firebird:
+    image: jacobalberty/firebird:v3.0
+    restart: unless-stopped
+    environment:
+      ISC_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      FIREBIRD_DATABASE: /var/lib/firebird/data/zynkronyx.fdb
+    volumes:
+      - firebird-data:/var/lib/firebird/data
+    healthcheck:
+      test: ["CMD-SHELL", "isql-fb -user SYSDBA -password $$ISC_PASSWORD localhost:/var/lib/firebird/data/zynkronyx.fdb -q -i /dev/null >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  backend:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-schrsistemas}/zynkronyx-backend:latest
+    restart: unless-stopped
+    depends_on:
+      firebird:
+        condition: service_healthy
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: firebird
+      DB_PORT: 3050
+      DB_DATABASE: /var/lib/firebird/data/zynkronyx.fdb
+      DB_USER: ${DB_USER:-SYSDBA}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      JSON_BODY_LIMIT: ${JSON_BODY_LIMIT:-1mb}
+      ERP_BASE_URL: ${ERP_BASE_URL:-http://erp:8080}
+      ERP_FORWARD_ENABLED: ${ERP_FORWARD_ENABLED:-false}
+      SYNC_PROCESSOR_ENABLED: ${SYNC_PROCESSOR_ENABLED:-false}
+      SYNC_APPLY_ENABLED: ${SYNC_APPLY_ENABLED:-false}
+
+volumes:
+  firebird-data:
