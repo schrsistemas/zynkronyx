@@ -4,7 +4,7 @@ const crypto = require('node:crypto');
 exports.ingest = async (req,res,next)=>{
   try{
     const device=await deviceRegistry.authenticate(req.tenant.id,req.headers['x-device-id'],req.headers['x-device-credential']);
-    if(!device)return res.status(401).json({erro:'Credencial do dispositivo invalida'});
+    if(!device)return res.status(401).json({erro:'Credencial do dispositivo invalida'});\n    if(!deviceRegistry.hasScope(device,'events:write'))return res.status(403).json({erro:'Scope events:write obrigatorio'});
     const events=Array.isArray(req.body)?req.body:[req.body];
     if(events.length>100)return res.status(413).json({erro:'Limite de 100 eventos por requisicao'});
     for(const e of events){
