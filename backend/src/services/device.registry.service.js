@@ -11,6 +11,7 @@ function validate(input) {
 exports.register = async (tenantId, input) => {
   validate(input);
   const token = crypto.randomBytes(32).toString('base64url');
+  const expiresDays = Math.max(1, Math.min(Number(process.env.DEVICE_CREDENTIAL_DAYS || 365), 3650));
   await db.execute(`INSERT INTO INTEGRATION_DEVICE
     (TENANT_ID, DEVICE_ID, DEVICE_TYPE, NAME, STATUS, PROTOCOL_VERSION, CREDENTIAL_HASH, CREDENTIAL_CREATED_AT)
     VALUES (?, ?, ?, ?, 'A', ?, ?, CURRENT_TIMESTAMP)`,
@@ -24,6 +25,6 @@ exports.revoke = async (tenantId, deviceId) => {
 };
 exports.authenticate = async (tenantId, deviceId, credential) => {
   if (!deviceId || !credential) return null;
-  const rows = await db.query(`SELECT DEVICE_ID, DEVICE_TYPE, PROTOCOL_VERSION FROM INTEGRATION_DEVICE WHERE TENANT_ID=? AND DEVICE_ID=? AND STATUS='A' AND CREDENTIAL_HASH=?`,[tenantId,deviceId,tokenHash(credential)]);
+  const rows = await db.query(`SELECT DEVICE_ID, DEVICE_TYPE, PROTOCOL_VERSION FROM INTEGRATION_DEVICE WHERE TENANT_ID=? AND DEVICE_ID=? AND STATUS='A' AND CREDENTIAL_HASH=? AND (CREDENTIAL_EXPIRES_AT IS NULL OR CREDENTIAL_EXPIRES_AT > CURRENT_TIMESTAMP)`,[tenantId,deviceId,tokenHash(credential)]);
   return rows[0] || null;
 };
