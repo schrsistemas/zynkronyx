@@ -59,30 +59,45 @@ exports.insertStaging = async (item) => {
 };
 
 exports.fetchPending = async (limit = 100) => {
+  const leaseSeconds = Math.max(30, Math.min(Number(process.env.SYNC_LEASE_SECONDS || 300), 86400));
   const safeLimit = Number.isInteger(limit) && limit > 0 ? Math.min(limit, 1000) : 100;
   const rows = await db.query(`
     SELECT FIRST ${safeLimit}
-      ID, EMPRESA_ID, TABELA, CHAVE, OPERACAO, PAYLOAD, TENTATIVAS, STATUS, DATA_RECEBIMENTO
+      ID, EMPRESA_ID, TABELA, CHAVE, OPERACAO, PAYLOAD, TENTATIVAS, STATUS,
+      DATA_RECEBIMENTO, DATA_PROCESSAMENTO, WORKER_ID
     FROM SYNC_STAGING
     WHERE STATUS = 'N'
-       OR (STATUS = 'P' AND DATA_RECEBIMENTO < DATEADD(-1 MINUTE TO CURRENT_TIMESTAMP))
+       OR (STATUS = 'P' AND DATA_PROCESSAMENTO < DATEADD(-${leaseSeconds} SECOND TO CURRENT_TIMESTAMP))
     ORDER BY ID
   `);
   return rows.map(row => ({ ...row, payload: parsePayload(row) }));
 };
 
-exports.markProcessing = async (id) => {
-  await db.execute(`
+exports.markProcessing = async (id, workerId = 'zynkronyx') => {
+  const leaseSeconds = Math.max(30, Math.min(Number(process.env.SYNC_LEASE_SECONDS || 300), 86400));
+  const rows = await db.query(`
     UPDATE SYNC_STAGING
-    SET STATUS = 'P', TENTATIVAS = COALESCE(TENTATIVAS, 0) + 1
-    WHERE ID = ? AND (STATUS = 'N' OR (STATUS = 'P' AND DATA_RECEBIMENTO < DATEADD(-1 MINUTE TO CURRENT_TIMESTAMP)))
-  `, [id]);
+    SET STATUS = 'P',
+        TENTATIVAS = COALESCE(TENTATIVAS, 0) + 1,
+        DATA_PROCESSAMENTO = CURRENT_TIMESTAMP,
+        WORKER_ID = ?
+    WHERE ID = ?
+      AND (
+        STATUS = 'N'
+        OR (STATUS = 'P' AND DATA_PROCESSAMENTO < DATEADD(-${leaseSeconds} SECOND TO CURRENT_TIMESTAMP))
+      )
+    RETURNING ID, TENTATIVAS
+  `, [workerId, id]);
+
+  const row = rows?.[0];
+  return row ? { id: row.ID, attempts: Number(row.TENTATIVAS || 0) } : null;
 };
 
 exports.markError = async (id, { permanent = false } = {}) => {
   await db.execute(`
     UPDATE SYNC_STAGING
-    SET STATUS = ?, PROCESSADO = CASE WHEN ? = 'S' THEN 'N' ELSE PROCESSADO END
+    SET STATUS = ?, PROCESSADO = CASE WHEN ? = 'S' THEN 'N' ELSE PROCESSADO END,
+        DATA_PROCESSAMENTO = NULL, WORKER_ID = NULL
     WHERE ID = ?
   `, [permanent ? 'E' : 'N', permanent ? 'S' : 'N', id]);
 };
@@ -90,7 +105,7 @@ exports.markError = async (id, { permanent = false } = {}) => {
 exports.markProcessed = async (id) => {
   await db.execute(`
     UPDATE SYNC_STAGING
-    SET STATUS = 'S', PROCESSADO = 'S'
+    SET STATUS = 'S', PROCESSADO = 'S', DATA_PROCESSAMENTO = NULL, WORKER_ID = NULL
     WHERE ID = ? AND STATUS = 'P'
   `, [id]);
 };
