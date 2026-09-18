@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  deployments: write
 
 concurrency:
   group: frontend-production
@@ -46,7 +47,8 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
-          if npx wrangler pages project list | grep -q "zynkronyx-control-center"; then
+          projects="$(npx wrangler pages project list --json)"
+          if echo "$projects" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.exit(JSON.parse(s).some(p=>p.name==="zynkronyx-control-center")?0:1))'; then
             echo "Cloudflare Pages project already exists."
           else
             echo "Creating Cloudflare Pages project..."
