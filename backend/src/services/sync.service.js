@@ -33,13 +33,25 @@ exports.getDelta = async (ultimaData) => {
 exports.processIncoming = async (payload) => {
   if (!Array.isArray(payload)) throw new Error('Payload deve ser array');
 
+  let staged = 0;
+  let duplicates = 0;
+
   for (const item of payload) {
     if (!item || !item.tabela || !item.operacao) throw new Error('Payload invalido');
-    await syncRepository.insertStaging(item);
+    try {
+      await syncRepository.insertStaging(item);
+      staged += 1;
+    } catch (error) {
+      if (error && (error.code === 335544665 || /violation.*UNIQUE|unique.*constraint/i.test(error.message || ''))) {
+        duplicates += 1;
+        continue;
+      }
+      throw error;
+    }
   }
 
   if (process.env.ERP_FORWARD_ENABLED !== 'true') {
-    return { staged: payload.length, forwarded: false };
+    return { staged, duplicates, forwarded: false };
   }
 
   try {
@@ -48,9 +60,9 @@ exports.processIncoming = async (payload) => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    return { staged: payload.length, forwarded: true };
+    return { staged, duplicates, forwarded: true };
   } catch (error) {
     console.error('[SYNC][SERVICE][ERP_IN][ERRO]', error.message);
-    return { staged: payload.length, forwarded: false, forwardingError: error.message };
+    return { staged, duplicates, forwarded: false, forwardingError: error.message };
   }
 };
