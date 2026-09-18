@@ -1,14 +1,16 @@
-// MOCK Firebird integration layer (placeholder for real connection)
+// Firebird service backed by the real node-firebird connection layer.
+// Keeping this adapter small makes the processor testable and avoids a
+// production code path that silently succeeds without touching the database.
+
+const connection = require('../db/firebird.connection');
 
 class FirebirdService {
   async query(sql, params = []) {
-    console.log('[DB QUERY]', sql, params);
-    return [];
+    return connection.query(sql, params);
   }
 
   async execute(sql, params = []) {
-    console.log('[DB EXECUTE]', sql, params);
-    return { success: true };
+    return connection.execute(sql, params);
   }
 }
 
