@@ -127,7 +127,7 @@ function SyncConsole() {
   const [result, setResult] = useState(null);
   async function send() {
     try {
-      const response = await fetch(API+"/sync/in", {method:"POST", headers:{"Content-Type":"application/json","x-api-key":"demo"}, body:payload});
+      const response = await fetch(API+"/sync/in", {method:"POST", headers:{"Content-Type":"application/json",...authHeaders()}, body:payload});
       setResult(await response.json());
     } catch (error) { setResult({erro:error.message}); }
   }
@@ -167,7 +167,7 @@ function Devices() {
 
 function Radar() {
  const [devices,setDevices]=useState([]); const [error,setError]=useState(null); const [loading,setLoading]=useState(false);
- async function load(){setLoading(true);setError(null);try{const r=await fetch(API+"/integration/devices",{headers:{"x-api-key":"demo","Authorization":"Bearer mock-token"},cache:"no-store"});const j=await r.json();if(!r.ok)throw new Error(j.erro||"Falha ao carregar radar");setDevices(j.devices||[])}catch(e){setError(e.message)}finally{setLoading(false)}}
+ async function load(){setLoading(true);setError(null);try{const r=await fetch(API+"/integration/devices",{headers:authHeaders(),cache:"no-store"});const j=await r.json();if(!r.ok)throw new Error(j.erro||"Falha ao carregar radar");setDevices(j.devices||[])}catch(e){setError(e.message)}finally{setLoading(false)}}
  useEffect(()=>{load()},[]);
  const located=devices.filter(d=>Number.isFinite(Number(d.LAST_LATITUDE))&&Number.isFinite(Number(d.LAST_LONGITUDE)));
  return <div>
