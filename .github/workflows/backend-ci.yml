@@ -1,0 +1,85 @@
+name: Zynkronyx Backend CI
+
+on:
+  push:
+    branches: ["main", "release/**"]
+    paths:
+      - "backend/**"
+      - "Dockerfile.prod.fix"
+      - ".github/workflows/backend-ci.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - "Dockerfile.prod.fix"
+      - ".github/workflows/backend-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Backend runtime tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+          cache-dependency-path: backend/package.basic.json
+
+      - name: Prepare runtime package
+        run: cp package.basic.json package.json
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run Node tests
+        run: npm test
+
+  docker:
+    name: Backend Docker smoke test
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build production image
+        run: docker build -f Dockerfile.prod.fix -t zynkronyx:backend-ci .
+
+      - name: Start container
+        run: docker run -d -p 3000:3000 --name zynkronyx-backend-ci zynkronyx:backend-ci
+
+      - name: Wait for health
+        run: |
+          for i in {1..30}; do
+            if curl -fsS http://localhost:3000/health; then exit 0; fi
+            sleep 2
+          done
+          docker logs zynkronyx-backend-ci
+          exit 1
+
+      - name: Validate public authentication entrypoint
+        run: |
+          curl -fsS -X POST http://localhost:3000/auth/login             -H "Content-Type: application/json"             -d '{"login":"ci"}'
+
+      - name: Logs on failure
+        if: failure()
+        run: docker logs zynkronyx-backend-ci
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker stop zynkronyx-backend-ci || true
+          docker rm zynkronyx-backend-ci || true
