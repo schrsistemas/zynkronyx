@@ -1,44 +1,29 @@
-const db = require('../services/db.firebird.service');
+const syncRepository = require('../repository/sync.repository');
 
 class SyncProcessor {
   async process({ limit = 100 } = {}) {
-    const safeLimit = Number.isInteger(limit) && limit > 0 ? Math.min(limit, 1000) : 100;
-    const rows = await db.query(`
-      SELECT FIRST ${safeLimit} ID, PAYLOAD, STATUS
-      FROM SYNC_STAGING
-      WHERE STATUS IN ('N', 'P')
-      ORDER BY ID
-    `);
-
-    let processed = 0;
+    const rows = await syncRepository.fetchPending(limit);
+    let claimed = 0;
     let failed = 0;
 
     for (const row of rows) {
       try {
-        await db.execute('UPDATE SYNC_STAGING SET STATUS = \'P\' WHERE ID = ?', [row.ID]);
+        await syncRepository.markProcessing(row.ID);
+        claimed += 1;
 
-        // Transport is complete at this layer. Table-specific business handlers
-        // must be introduced before changing a staged event to success.
-        await db.execute(
-          `UPDATE SYNC_STAGING
-           SET STATUS = 'S', PROCESSADO = 'S'
-           WHERE ID = ?`,
-          [row.ID]
-        );
+        // A table-specific business handler must be registered before an event
+        // can be marked successful. Keeping it in P prevents false positives.
+        if (process.env.SYNC_APPLY_ENABLED !== 'true') continue;
 
-        processed += 1;
+        // Business application is intentionally feature-gated. The current
+        // processor owns queue claiming; ERP-specific handlers come next.
       } catch (error) {
         failed += 1;
-        await db.execute(
-          `UPDATE SYNC_STAGING
-           SET STATUS = 'E', PROCESSADO = 'N'
-           WHERE ID = ?`,
-          [row.ID]
-        ).catch(() => {});
+        await syncRepository.markError(row.ID).catch(() => {});
       }
     }
 
-    return { selected: rows.length, processed, failed };
+    return { selected: rows.length, claimed, failed };
   }
 }
 
