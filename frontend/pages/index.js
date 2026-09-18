@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import IntegrationsCenter from "../components/IntegrationsCenter";
 
 const RadarMap = dynamic(() => import("../components/RadarMap"), { ssr:false, loading:() => <div className="radarMap radarLoading">Carregando mapa operacional…</div> });
 
@@ -63,6 +64,7 @@ export default function Home() {
           <Nav active={section==="security"} onClick={()=>setSection("security")} icon="⌑">Security</Nav>
           <Nav active={section==="radar"} onClick={()=>setSection("radar")} icon="⌖">Radar</Nav>
           <Nav active={section==="devices"} onClick={()=>setSection("devices")} icon="⌁">Devices</Nav>
+          <Nav active={section==="integrations"} onClick={()=>setSection("integrations")} icon="⚙">Integrations</Nav>
           <Nav active={section==="audit"} onClick={()=>setSection("audit")} icon="≡">Audit</Nav>
           <Nav active={section==="deploy"} onClick={()=>setSection("deploy")} icon="⇧">Deployments</Nav>
           <Nav active={section==="docs"} onClick={()=>setSection("docs")} icon="?">Docs</Nav>
@@ -83,6 +85,7 @@ export default function Home() {
         {section === "security" && <Security onAuth={()=>setAuthVersion(v=>v+1)}/>}
         {section === "radar" && <Radar/>}
         {section === "devices" && <Devices/>}
+        {section === "integrations" && <IntegrationsCenter/>}
         {section === "audit" && <Audit/>}
         {section === "deploy" && <Deployments/>}
         {section === "docs" && <Docs/>}
@@ -92,7 +95,7 @@ export default function Home() {
 }
 
 function Nav({active,onClick,icon,children}) { return <button className={active?"active":""} onClick={onClick}>{icon} <span>{children}</span></button>; }
-function title(s) { return ({overview:"System Overview",services:"Services",api:"API Explorer",database:"Database",sync:"Synchronization",devices:"Device Integrations",audit:"Legal Audit",deploy:"Deployments",docs:"Documentation",monitoring:"Monitoring",radar:"Radar Visual",security:"Security"})[s] || "Zynkronyx"; }
+function title(s) { return ({overview:"System Overview",services:"Services",api:"API Explorer",database:"Database",sync:"Synchronization",devices:"Device Integrations",audit:"Legal Audit",deploy:"Deployments",docs:"Documentation",integrations:"Integrations & Simulator",monitoring:"Monitoring",radar:"Radar Visual",security:"Security"})[s] || "Zynkronyx"; }
 function authHeaders(){ if(typeof window==="undefined") return {}; const token=sessionStorage.getItem("zynkronyx_token"); const key=process.env.NEXT_PUBLIC_TENANT_API_KEY; return {...(key?{"x-api-key":key}:{}),...(token?{Authorization:"Bearer "+token}:{})}; }
 function findCapability(list,name) { return list.find(x => x.name === name); }
 
