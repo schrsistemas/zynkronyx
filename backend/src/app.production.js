@@ -7,11 +7,11 @@ const rateLimit = require('./middleware/rateLimit.middleware');
 const tenant = require('./middleware/tenant');
 const auth = require('./middleware/auth.basic');
 
-const syncRoutes = require('./routes/sync.basic');
+const syncRoutes = require('./routes/sync');
 const adminRoutes = require('./routes/admin.basic');
 const authRoutes = require('./routes/auth.basic');
 
-require('./processor/runner');
+const processorRunner = require('./processor/runner');
 
 app.use(express.json());
 app.use(rateLimit);
@@ -38,6 +38,9 @@ app.get('/metrics', (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   logger.info('API PROD rodando na porta ' + PORT);
+  processorRunner.start();
 });
+
+module.exports = { app, server };
