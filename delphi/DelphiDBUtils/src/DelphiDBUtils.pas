@@ -8,7 +8,8 @@ uses
   DBU.Query,
   DBU.Transaction,
   DBU.Driver,
-  DBU.SQL;
+  DBU.SQL,
+  DBU.CRUD;
 
 implementation
 
