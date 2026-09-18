@@ -16,6 +16,7 @@ class SyncProcessor {
     const workerId = process.env.SYNC_WORKER_ID || `zynkronyx-${crypto.randomUUID()}`;
 
     for (const row of rows) {
+      let attempts = Number(row.TENTATIVAS || 0);
       try {
         const claim = await syncRepository.markProcessing(row.ID, workerId);
         if (!claim) {
@@ -23,6 +24,7 @@ class SyncProcessor {
           continue;
         }
         claimed += 1;
+        attempts = claim.attempts;
 
         if (process.env.SYNC_APPLY_ENABLED !== 'true') continue;
 
@@ -43,7 +45,6 @@ class SyncProcessor {
         applied += 1;
       } catch (error) {
         failed += 1;
-        const attempts = Number((await syncRepository.fetchAttemptCount?.(row.ID)) || row.TENTATIVAS || 0);
         const permanent = attempts >= maxAttempts;
         await syncRepository.markError(row.ID, { permanent }).catch(() => {});
       }
