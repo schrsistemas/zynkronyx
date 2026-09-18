@@ -199,7 +199,44 @@ function Deployments() {
  </div>;
 }
 
-function Audit() { return <div className="panel"><p className="lead">Auditoria será alimentada pelo AUDIT_LOG do backend. Nenhum evento fictício é exibido.</p><div className="emptyState"><div className="bigIcon">≡</div><h2>Audit stream</h2><p>Interface preparada. A conexão real depende da API autenticada de auditoria.</p></div></div>; }
+function Audit() {
+ const [rows,setRows]=useState([]); const [cursor,setCursor]=useState(0); const [loading,setLoading]=useState(false); const [error,setError]=useState(null); const [selected,setSelected]=useState(null);
+ const [filters,setFilters]=useState({device_id:"",event_type:"SECURITY",resultado:""});
+ const auth={headers:authHeaders()};
+ async function load(nextCursor=0){
+  setLoading(true);setError(null);
+  try{
+   const qs=new URLSearchParams({limit:"50",cursor:String(nextCursor)});
+   if(filters.device_id)qs.set("device_id",filters.device_id);
+   if(filters.event_type)qs.set("event_type",filters.event_type);
+   if(filters.resultado)qs.set("resultado",filters.resultado);
+   const r=await fetch(API+"/audit/events?"+qs.toString(),{...auth,cache:"no-store"});
+   const j=await r.json();if(!r.ok)throw new Error(j.erro||"Falha ao consultar auditoria");
+   setRows(j.events||j.rows||[]);setCursor(Number(j.next_cursor||0));
+  }catch(e){setError(e.message);setRows([])}finally{setLoading(false)}
+ }
+ useEffect(()=>{load(0)},[]);
+ function apply(e){e.preventDefault();load(0)}
+ return <div>
+  <div className="panel">
+   <div className="sectionTitle"><h3>Security & Legal Audit</h3><span>Somente eventos retornados pela API</span></div>
+   <form className="auditFilters" onSubmit={apply}>
+    <input placeholder="device_id" value={filters.device_id} onChange={e=>setFilters({...filters,device_id:e.target.value})}/>
+    <select value={filters.event_type} onChange={e=>setFilters({...filters,event_type:e.target.value})}><option value="">Todos os tipos</option><option>SECURITY</option><option>DEVICE</option><option>SYNC</option></select>
+    <select value={filters.resultado} onChange={e=>setFilters({...filters,resultado:e.target.value})}><option value="">Todos os resultados</option><option>ALLOWED</option><option>DENIED</option><option>RECEIVED</option></select>
+    <button type="submit">{loading?"Consultando...":"Aplicar filtros"}</button>
+   </form>
+   {error&&<div className="resultBox">{error}</div>}
+   {!rows.length&&!loading&&!error?<div className="emptyState"><div className="bigIcon">≡</div><h2>Sem eventos</h2><p>Nenhum registro correspondente foi retornado pela API.</p></div>:
+    rows.map((e,i)=><button className="auditRow" key={e.ID||e.id||e.EVENT_ID||i} onClick={()=>setSelected(e)}>
+      <div><strong>{e.EVENT_ID||e.event_id}</strong><small>{e.EVENT_TYPE||e.event_type} · {e.DEVICE_ID||e.device_id||"—"} · {e.SERVER_TIMESTAMP||e.server_timestamp||"—"}</small></div>
+      <span className={"status "+((e.RESULTADO||e.resultado)==="DENIED"?"muted":"")}>{e.RESULTADO||e.resultado}</span>
+    </button>)}
+   {cursor>0&&<div className="syncActions"><button onClick={()=>load(cursor)}>Carregar próxima página</button></div>}
+  </div>
+  {selected&&<div className="panel auditDetail"><div className="sectionTitle"><h3>Evento de segurança</h3><button onClick={()=>setSelected(null)}>Fechar</button></div><pre className="resultBox">{JSON.stringify(selected,null,2)}</pre></div>}
+ </div>;
+}
 
 function Docs() { return <div className="panel"><p className="lead">Documentação operacional do projeto.</p><div className="row"><div><strong>Architecture</strong><small>Fluxos, componentes e responsabilidades</small></div><span className="status">docs/</span></div><div className="row"><div><strong>Build ALL</strong><small>Critérios de implementação e deploy</small></div><span className="status">BUILD-ALL</span></div><div className="row"><div><strong>API</strong><small>Endpoints públicos atuais</small></div><span className="status">LIVE</span></div></div>; }
 
