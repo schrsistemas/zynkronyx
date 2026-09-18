@@ -1,0 +1,6 @@
+name = "mute-grass-9428"
+main = "src/index.js"
+compatibility_date = "2026-09-18"
+
+[vars]
+APP_NAME = "Zynkronyx"
