@@ -12,6 +12,10 @@ class FirebirdService {
   async execute(sql, params = []) {
     return connection.execute(sql, params);
   }
+
+  async transaction(work) {
+    return connection.transaction(work);
+  }
 }
 
 module.exports = new FirebirdService();
