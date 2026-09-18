@@ -38,7 +38,7 @@ exports.revoke = async (tenantId, deviceId) => {
 };
 exports.authenticate = async (tenantId, deviceId, credential) => {
   if (!deviceId || !credential) return null;
-  const rows = await db.query(`SELECT DEVICE_ID, DEVICE_TYPE, PROTOCOL_VERSION FROM INTEGRATION_DEVICE WHERE TENANT_ID=? AND DEVICE_ID=? AND STATUS='A' AND CREDENTIAL_HASH=? AND (CREDENTIAL_EXPIRES_AT IS NULL OR CREDENTIAL_EXPIRES_AT > CURRENT_TIMESTAMP)`,[tenantId,deviceId,tokenHash(credential)]);
+  const rows = await db.query(`SELECT DEVICE_ID, DEVICE_TYPE, PROTOCOL_VERSION, SCOPES FROM INTEGRATION_DEVICE WHERE TENANT_ID=? AND DEVICE_ID=? AND STATUS='A' AND CREDENTIAL_HASH=? AND (CREDENTIAL_EXPIRES_AT IS NULL OR CREDENTIAL_EXPIRES_AT > CURRENT_TIMESTAMP)`,[tenantId,deviceId,tokenHash(credential)]);
   return rows[0] || null;
 };
 
