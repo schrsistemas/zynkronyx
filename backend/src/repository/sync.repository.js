@@ -1,4 +1,13 @@
+const crypto = require('node:crypto');
 const db = require('../services/db.firebird.service');
+
+function stablePayload(item) {
+  return JSON.stringify(item.dados ?? item.payload ?? item);
+}
+
+function payloadHash(item) {
+  return crypto.createHash('sha256').update(stablePayload(item)).digest('hex');
+}
 
 function parsePayload(row) {
   if (row && typeof row.PAYLOAD === 'string') {
@@ -29,7 +38,8 @@ exports.fetchDelta = async (ultimaData, { limit = 500 } = {}) => {
 };
 
 exports.insertStaging = async (item) => {
-  const payload = JSON.stringify(item.dados ?? item.payload ?? item);
+  const payload = stablePayload(item);
+  const hashUnico = item.hash_unico ?? item.hashUnico ?? payloadHash(item);
   const empresaId = item.empresa_id ?? item.empresaId ?? 1;
 
   await db.execute(`
@@ -43,6 +53,12 @@ exports.insertStaging = async (item) => {
     item.operacao,
     payload
   ]);
+
+  await db.execute(`
+    UPDATE SYNC_STAGING
+    SET HASH_UNICO = ?
+    WHERE ID = (SELECT MAX(ID) FROM SYNC_STAGING WHERE EMPRESA_ID = ?)
+  `, [hashUnico, empresaId]);
 
   return { staged: true };
 };
