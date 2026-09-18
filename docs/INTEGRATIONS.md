@@ -57,3 +57,8 @@ protocol_version acompanha cada evento; mudanças incompatíveis usam nova vers�
 ## Atomic device ingestion
 
 Device event ingestion is committed as one Firebird transaction: legal event evidence, device last-seen state, and sync staging are written together. A duplicate (tenant_id, event_id) is detected before mutation and does not create a second staging record.
+
+
+## Radar visual
+
+The Control Center radar plots only coordinates explicitly reported in an event location object. Coordinates are optional; invalid or absent coordinates leave the last known position unchanged. The system does not infer residential addresses or fabricate positions.

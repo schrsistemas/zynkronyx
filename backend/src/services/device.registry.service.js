@@ -31,7 +31,7 @@ exports.register = async (tenantId, input) => {
     [tenantId,input.device_id.trim(),input.device_type,input.name || null,input.protocol_version || 1,tokenHash(token),scopeList]);
   return { device_id: input.device_id.trim(), credential: token, expires_in_days: expiresDays, scopes: scopeList.split(',') };
 };
-exports.list = async tenantId => db.query(`SELECT DEVICE_ID, DEVICE_TYPE, NAME, STATUS, PROTOCOL_VERSION, LAST_SEEN, CREATED_AT FROM INTEGRATION_DEVICE WHERE TENANT_ID = ? ORDER BY DEVICE_ID`,[tenantId]);
+exports.list = async tenantId => db.query(`SELECT DEVICE_ID, DEVICE_TYPE, NAME, STATUS, PROTOCOL_VERSION, LAST_SEEN, CREATED_AT, LAST_LATITUDE, LAST_LONGITUDE, LOCATION_UPDATED_AT FROM INTEGRATION_DEVICE WHERE TENANT_ID = ? ORDER BY DEVICE_ID`,[tenantId]);
 exports.revoke = async (tenantId, deviceId) => {
   const result = await db.execute(`UPDATE INTEGRATION_DEVICE SET STATUS='I' WHERE TENANT_ID=? AND DEVICE_ID=? AND STATUS='A'`,[tenantId,deviceId]);
   return !!result;

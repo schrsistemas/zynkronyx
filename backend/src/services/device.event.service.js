@@ -53,11 +53,17 @@ exports.ingest = async (tenantId, event, correlationId) => {
       ]
     );
 
+    const lat = Number(event.location?.latitude);
+    const lon = Number(event.location?.longitude);
+    const hasLocation = Number.isFinite(lat) && Number.isFinite(lon) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180;
     await tx.execute(
       `UPDATE INTEGRATION_DEVICE
-       SET LAST_SEEN = CURRENT_TIMESTAMP
+       SET LAST_SEEN = CURRENT_TIMESTAMP,
+           LAST_LATITUDE = CASE WHEN ? THEN ? ELSE LAST_LATITUDE END,
+           LAST_LONGITUDE = CASE WHEN ? THEN ? ELSE LAST_LONGITUDE END,
+           LOCATION_UPDATED_AT = CASE WHEN ? THEN CURRENT_TIMESTAMP ELSE LOCATION_UPDATED_AT END
        WHERE TENANT_ID = ? AND DEVICE_ID = ?`,
-      [tenantId, event.device_id]
+      [hasLocation, lat, hasLocation, lon, hasLocation, tenantId, event.device_id]
     );
 
     await syncRepository.insertStagingTx(tx, {
