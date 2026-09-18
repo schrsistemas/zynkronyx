@@ -56,7 +56,6 @@ export default function Home() {
           <Nav active={section==="database"} onClick={()=>setSection("database")} icon="▣">Database</Nav>
           <Nav active={section==="sync"} onClick={()=>setSection("sync")} icon="⇄">Sync</Nav>
           <Nav active={section==="monitoring"} onClick={()=>setSection("monitoring")} icon="◉">Monitoring</Nav>
-          <Nav active={section==="audit"} onClick={()=>setSection("audit")} icon="≡">Audit</Nav>
           <Nav active={section==="devices"} onClick={()=>setSection("devices")} icon="⌁">Devices</Nav>
           <Nav active={section==="audit"} onClick={()=>setSection("audit")} icon="≡">Audit</Nav>
           <Nav active={section==="deploy"} onClick={()=>setSection("deploy")} icon="⇧">Deployments</Nav>
@@ -132,24 +131,31 @@ function SyncConsole() {
 function Monitoring({status,latency}) { return <div className="panel"><p className="lead">Diagnóstico operacional observado pelo navegador.</p><div className="row"><div><strong>Cloudflare Worker</strong><small>{status?.runtime || "cloudflare-workers"}</small></div><span className={"status " + (status?.ok ? "":"muted")}>{status?.ok ? "online":"offline"}</span></div><div className="row"><div><strong>API latency</strong><small>Última medição</small></div><span className="status">{latency ? latency+" ms":"—"}</span></div><div className="row"><div><strong>Cache policy</strong><small>API responses</small></div><span className="status">no-store</span></div></div>; }
 
 function Devices() {
- const [rows,setRows]=useState([]);
- const [error,setError]=useState(null);
- const [loading,setLoading]=useState(false);
- async function load() {
-  setLoading(true); setError(null);
-  try {
-   const r=await fetch(API+"/integration/devices",{headers:{"x-api-key":"demo","Authorization":"Bearer mock-token"},cache:"no-store"});
-   const j=await r.json(); if(!r.ok) throw new Error(j.erro||"Falha ao consultar dispositivos");
-   setRows(j.devices||[]);
-  } catch(e){setError(e.message)} finally{setLoading(false)}
- }
+ const [rows,setRows]=useState([]); const [error,setError]=useState(null); const [loading,setLoading]=useState(false);
+ const [form,setForm]=useState({device_id:"",device_type:"simulator",name:"",protocol_version:1,scopes:["events:write"]});
+ const [credential,setCredential]=useState(null); const [action,setAction]=useState(null);
+ const auth={headers:{"x-api-key":"demo","Authorization":"Bearer mock-token"}};
+ async function load(){setLoading(true);setError(null);try{const r=await fetch(API+"/integration/devices",{...auth,cache:"no-store"});const j=await r.json();if(!r.ok)throw new Error(j.erro||"Falha ao consultar dispositivos");setRows(j.devices||[]);}catch(e){setError(e.message)}finally{setLoading(false)}}
  useEffect(()=>{load()},[]);
- return <div className="panel">
-  <div className="sectionTitle"><h3>Device Registry</h3><button onClick={load}>{loading?"Atualizando...":"Atualizar"}</button></div>
-  <p className="lead">Dispositivos registrados por tenant. A interface não exibe credenciais persistentes.</p>
-  {error && <div className="resultBox">{error}</div>}
-  {!rows.length && !error ? <div className="emptyState"><h2>Nenhum dispositivo retornado</h2><p>O painel não inventa dispositivos. Quando a API estiver autenticada e houver registros, eles aparecerão aqui.</p></div> :
-   rows.map(d=><div className="row" key={d.DEVICE_ID}><div><strong>{d.DEVICE_ID}</strong><small>{d.DEVICE_TYPE} · protocolo {d.PROTOCOL_VERSION} · {d.LAST_SEEN||"nunca visto"}</small></div><span className={"status "+(d.STATUS==="A"?"":"muted")}>{d.STATUS==="A"?"active":"inactive"}</span></div>)}
+ function change(e){setForm({...form,[e.target.name]:e.target.name==="protocol_version"?Number(e.target.value):e.target.value})}
+ async function register(e){e.preventDefault();setAction("register");setError(null);try{const r=await fetch(API+"/integration/devices",{method:"POST",...auth,headers:{...auth.headers,"Content-Type":"application/json"},body:JSON.stringify(form)});const j=await r.json();if(!r.ok)throw new Error(j.erro||"Falha ao registrar");setCredential(j.device);setForm({...form,device_id:"",name:""});await load()}catch(e){setError(e.message)}finally{setAction(null)}}
+ async function rotate(id){setAction("rotate:"+id);setError(null);try{const r=await fetch(API+"/integration/devices/"+encodeURIComponent(id)+"/rotate",{method:"POST",...auth});const j=await r.json();if(!r.ok)throw new Error(j.erro||"Falha ao rotacionar");setCredential(j.device)}catch(e){setError(e.message)}finally{setAction(null)}}
+ async function revoke(id){if(!window.confirm("Revogar o dispositivo "+id+"?"))return;setAction("revoke:"+id);try{const r=await fetch(API+"/integration/devices/"+encodeURIComponent(id),{method:"DELETE",...auth});const j=await r.json();if(!r.ok)throw new Error(j.erro||"Falha ao revogar");await load()}catch(e){setError(e.message)}finally{setAction(null)}}
+ return <div>
+  <div className="panel"><div className="sectionTitle"><h3>Novo dispositivo</h3><span>Credential gerada uma única vez</span></div>
+   <form onSubmit={register} className="deviceForm">
+    <input name="device_id" value={form.device_id} onChange={change} placeholder="device_id" required/>
+    <select name="device_type" value={form.device_type} onChange={change}>{["arduino","raspberry-pi","pic","android","ios","delphi","simulator"].map(x=><option key={x}>{x}</option>)}</select>
+    <input name="name" value={form.name} onChange={change} placeholder="Nome (opcional)"/>
+    <input name="protocol_version" type="number" min="1" value={form.protocol_version} onChange={change}/>
+    <button type="submit">{action==="register"?"Registrando...":"Registrar dispositivo"}</button>
+   </form>
+   {error&&<div className="resultBox">{error}</div>}
+  </div>
+  {credential&&<div className="panel credentialPanel"><div className="sectionTitle"><h3>Credencial recém-gerada</h3><button onClick={()=>setCredential(null)}>Fechar</button></div><p>Ela é retornada pela API somente neste momento. Não é armazenada pelo Control Center.</p><code className="credential">{credential.credential}</code><div><button onClick={()=>navigator.clipboard?.writeText(credential.credential)}>Copiar credencial</button></div><small>Validade: {credential.expires_in_days||"configurada no servidor"} dias · scopes: {(credential.scopes||[]).join(", ")}</small></div>}
+  <div className="panel"><div className="sectionTitle"><h3>Device Registry</h3><button onClick={load}>{loading?"Atualizando...":"Atualizar"}</button></div><p className="lead">Tenant atual · credenciais nunca aparecem na listagem.</p>
+   {!rows.length&&!error?<div className="emptyState"><h2>Nenhum dispositivo retornado</h2><p>O painel não inventa dados.</p></div>:rows.map(d=><div className="row" key={d.DEVICE_ID}><div><strong>{d.DEVICE_ID}</strong><small>{d.NAME||"Sem nome"} · {d.DEVICE_TYPE} · protocolo {d.PROTOCOL_VERSION} · {d.LAST_SEEN||"nunca visto"}</small></div><span className={"status "+(d.STATUS==="A"?"":"muted")}>{d.STATUS==="A"?"active":"inactive"}</span><div><button disabled={action===("rotate:"+d.DEVICE_ID)} onClick={()=>rotate(d.DEVICE_ID)}>Rotacionar</button> <button disabled={action===("revoke:"+d.DEVICE_ID)} onClick={()=>revoke(d.DEVICE_ID)}>Revogar</button></div></div>)}
+  </div>
  </div>;
 }
 
