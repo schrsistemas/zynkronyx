@@ -10,18 +10,47 @@ const SECURITY_HEADERS = {
 
 const JSON_HEADERS = {
   "content-type": "application/json; charset=UTF-8",
-  "access-control-allow-origin": "*",
   "cache-control": "no-store",
 };
+const PROXY_PREFIXES = ["/auth", "/sync", "/integration", "/audit", "/admin", "/metrics"];
+function corsHeaders(request) {
+  const origin = request.headers.get("Origin");
+  return {
+    "access-control-allow-origin": origin || "*",
+    "access-control-allow-headers": "Authorization, Content-Type, x-api-key, x-device-id, x-device-credential, x-correlation-id",
+    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+    "access-control-max-age": "86400",
+  };
+}
+function isProxyPath(path) {
+  return PROXY_PREFIXES.some(prefix => path === prefix || path.startsWith(prefix + "/"));
+}
+async function proxy(request, url, env) {
+  if (!env.BACKEND_URL) return json({ok:false,error:"BACKEND_NOT_CONFIGURED"},503,corsHeaders(request));
+  const base = env.BACKEND_URL.replace(/\/+$/, "");
+  const target = new URL(url.pathname + url.search, base + "/");
+  const headers = new Headers(request.headers);
+  headers.delete("host");
+  const upstream = await fetch(target, {
+    method: request.method,
+    headers,
+    body: ["GET","HEAD"].includes(request.method) ? undefined : request.body,
+    redirect: "manual",
+  });
+  const responseHeaders = new Headers(upstream.headers);
+  Object.entries(corsHeaders(request)).forEach(([k,v]) => responseHeaders.set(k,v));
+  responseHeaders.set("cache-control","no-store");
+  return new Response(upstream.body,{status:upstream.status,statusText:upstream.statusText,headers:responseHeaders});
+}
 
-function json(data, status = 200) {
+function json(data, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(data, null, 2), {
     status,
-    headers: JSON_HEADERS,
+    headers: { ...JSON_HEADERS, ...extraHeaders },
   });
 }
 
-function corsHeaders(request) {\n  const origin = request.headers.get("Origin");\n  return { "access-control-allow-origin": origin || "*", "access-control-allow-headers": "Authorization, Content-Type, x-api-key, x-device-id, x-device-credential, x-correlation-id", "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS", "access-control-max-age": "86400" };\n}\n\nfunction html() {
+function html() {
   return new Response(HTML, { headers: SECURITY_HEADERS });
 }
 
@@ -82,6 +111,11 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/+$/, "") || "/";
 
+    if (request.method === "OPTIONS") return new Response(null,{status:204,headers:corsHeaders(request)});
+    if (isProxyPath(path)) {
+      try { return await proxy(request,url,env); }
+      catch (_) { return json({ok:false,error:"BACKEND_UNREACHABLE"},502,corsHeaders(request)); }
+    }
     if (request.method !== "GET" && request.method !== "HEAD") {
       return json({ ok: false, error: "METHOD_NOT_ALLOWED" }, 405);
     }
@@ -131,7 +165,7 @@ export default {
       ok: false,
       error: "NOT_FOUND",
       path,
-      available: ["/", "/health", "/api/status", "/api/capabilities"],
+      available: ["/", "/health", "/api/status", "/api/capabilities", "/auth/*", "/sync/*", "/integration/*", "/audit/*", "/admin/*", "/metrics"],
     }, 404);
   },
 };
