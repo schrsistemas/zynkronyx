@@ -52,3 +52,8 @@ Firmware mantém event_id, sequence, buffer, retry, watchdog e conectividade. Nu
 
 ## Compatibilidade
 protocol_version acompanha cada evento; mudanças incompatíveis usam nova versão.
+
+
+## Atomic device ingestion
+
+Device event ingestion is committed as one Firebird transaction: legal event evidence, device last-seen state, and sync staging are written together. A duplicate (tenant_id, event_id) is detected before mutation and does not create a second staging record.
