@@ -11,18 +11,24 @@ const syncRoutes = require('./routes/sync.basic');
 const adminRoutes = require('./routes/admin.basic');
 const authRoutes = require('./routes/auth.basic');
 
-// iniciar runner do processor
 require('./processor/runner');
 
 app.use(express.json());
 app.use(rateLimit);
-app.use(tenant);
 
+// Health e autenticacao inicial devem ser publicos.
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
+  res.json({
+    status: 'ok',
+    service: 'zynkronyx',
+    timestamp: new Date().toISOString()
+  });
 });
 
 app.use('/auth', authRoutes);
+
+// Recursos de negocio exigem tenant e autenticacao.
+app.use(tenant);
 app.use('/sync', auth, syncRoutes);
 app.use('/admin', auth, adminRoutes);
 
