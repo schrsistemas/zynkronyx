@@ -8,6 +8,7 @@ const auth = require('./middleware/auth.basic');
 
 const syncRoutes = require('./routes/sync.routes');
 const deviceRoutes = require('./routes/device.routes');
+const auditRoutes = require('./routes/audit.routes');
 const adminRoutes = require('./routes/admin.basic');
 const authRoutes = require('./routes/auth.basic');
 
@@ -28,6 +29,7 @@ app.use('/auth', authRoutes);
 app.use(tenant);
 app.use('/sync', auth, syncRoutes);
 app.use('/integration', auth, deviceRoutes);
+app.use('/audit', auth, auditRoutes);
 app.use('/admin', auth, adminRoutes);
 
 app.get('/metrics', (req, res) => res.type('text/plain').send('metrics ok'));
