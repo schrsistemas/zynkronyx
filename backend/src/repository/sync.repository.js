@@ -55,7 +55,7 @@ exports.insertStaging = async (item) => {
     hashUnico
   ]);
 
-  return { staged: true };
+  return { staged: true, hash_unico: hashUnico };
 };
 
 exports.fetchPending = async (limit = 100) => {
