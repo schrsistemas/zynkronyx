@@ -1,4 +1,6 @@
-const VERSION = "0.2.2";
+const VERSION = "0.3.0";
+const PROXY_PREFIXES = ["/auth", "/sync", "/integration", "/audit", "/admin", "/metrics"];
+const CORS_HEADERS = {"access-control-allow-origin":"*","access-control-allow-methods":"GET,POST,PUT,PATCH,DELETE,OPTIONS","access-control-allow-headers":"Authorization,Content-Type,x-api-key,x-device-id,x-device-credential,x-correlation-id","access-control-max-age":"86400"};
 
 const SECURITY_HEADERS = {
   "content-type": "text/html; charset=UTF-8",
@@ -14,11 +16,31 @@ const JSON_HEADERS = {
   "cache-control": "no-store",
 };
 
-function json(data, status = 200) {
+function json(data, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(data, null, 2), {
     status,
-    headers: JSON_HEADERS,
+    headers: { ...JSON_HEADERS, ...CORS_HEADERS, ...extraHeaders },
   });
+}
+function isProxyPath(path) {
+  return PROXY_PREFIXES.some(prefix => path === prefix || path.startsWith(prefix + "/"));
+}
+function pathWithQuery(url) { return url.pathname + url.search; }
+async function proxy(request, url, env) {
+  if (!env.BACKEND_URL) return json({ok:false,error:"BACKEND_NOT_CONFIGURED"},503);
+  const target = new URL(pathWithQuery(url), env.BACKEND_URL.replace(/\/+$/, "") + "/");
+  const headers = new Headers(request.headers);
+  headers.delete("host");
+  const upstream = await fetch(target.toString(), {
+    method: request.method,
+    headers,
+    body: ["GET","HEAD"].includes(request.method) ? undefined : request.body,
+    redirect: "manual",
+  });
+  const responseHeaders = new Headers(upstream.headers);
+  Object.entries(CORS_HEADERS).forEach(([k,v]) => responseHeaders.set(k,v));
+  responseHeaders.set("cache-control","no-store");
+  return new Response(upstream.body,{status:upstream.status,statusText:upstream.statusText,headers:responseHeaders});
 }
 
 function html() {
@@ -78,10 +100,15 @@ a{color:#e4e4e7}
 </html>`;
 
 export default {
-  async fetch(request) {
+  async fetch(request, env) {
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/+$/, "") || "/";
 
+    if (request.method === "OPTIONS") return new Response(null,{status:204,headers:CORS_HEADERS});
+    if (isProxyPath(path)) {
+      try { return await proxy(request,url,env); }
+      catch (error) { return json({ok:false,error:"BACKEND_UNREACHABLE"},502); }
+    }
     if (request.method !== "GET" && request.method !== "HEAD") {
       return json({ ok: false, error: "METHOD_NOT_ALLOWED" }, 405);
     }
@@ -131,7 +158,7 @@ export default {
       ok: false,
       error: "NOT_FOUND",
       path,
-      available: ["/", "/health", "/api/status", "/api/capabilities"],
+      available: ["/", "/health", "/api/status", "/api/capabilities", "/auth/*", "/sync/*", "/integration/*", "/audit/*", "/admin/*", "/metrics"],
     }, 404);
   },
 };
