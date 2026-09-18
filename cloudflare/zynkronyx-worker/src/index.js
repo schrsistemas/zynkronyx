@@ -1,4 +1,4 @@
-const VERSION = "0.2.1";
+const VERSION = "0.2.2";
 
 const SECURITY_HEADERS = {
   "content-type": "text/html; charset=UTF-8",
@@ -34,7 +34,7 @@ const HTML = `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Zynkronyx API</title>
+<title>Zynkronyx Control Center</title>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -56,9 +56,9 @@ a{color:#e4e4e7}
 <body>
 <main>
 <section class="hero">
-<span class="badge">PUBLIC API · SERVERLESS</span>
+<span class="badge">CONTROL CENTER · LIVE</span>
 <h1>Zynkronyx</h1>
-<p>Gateway público inicial do projeto. Esta página é servida diretamente pelo Cloudflare Worker.</p>
+<p>Control Center público do projeto, servido diretamente pelo Cloudflare Worker.</p>
 <div class="grid">
 <div class="card"><b>Status</b><span class="ok">● ONLINE</span></div>
 <div class="card"><b>Version</b><span class="endpoint">${VERSION}</span></div>
@@ -114,10 +114,10 @@ export default {
           { name: "health", method: "GET", path: "/health", status: "active" },
           { name: "status", method: "GET", path: "/api/status", status: "active" },
           { name: "capabilities", method: "GET", path: "/api/capabilities", status: "active" },
-          { name: "database", status: "planned", target: "Cloudflare D1" },
+          { name: "database", status: "active", target: "Firebird" },
           { name: "sync-in", method: "POST", path: "/sync/in", status: "backend-ready", target: "Firebird" },
           { name: "sync-out", method: "GET", path: "/sync/out", status: "backend-ready", target: "Firebird" },
-          { name: "authentication", status: "planned" },
+          { name: "authentication", status: "backend" },
         ],
         timestamp: now(),
       });
