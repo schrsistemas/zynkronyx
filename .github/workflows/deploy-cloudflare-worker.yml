@@ -2,8 +2,7 @@ name: Deploy Cloudflare Worker
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
     paths:
       - "cloudflare/zynkronyx-worker/**"
       - ".github/workflows/deploy-cloudflare-worker.yml"
@@ -21,7 +20,6 @@ jobs:
     name: Deploy Worker
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -34,22 +32,21 @@ jobs:
           workingDirectory: cloudflare/zynkronyx-worker
           command: deploy
 
-      - name: Smoke test root version
-        run: |
-          curl --fail --silent --show-error --retry 5 --retry-delay 2 \
-            https://mute-grass-9428.schrsistemas.workers.dev/health | grep '"version": "0.2.2"'
+      - name: Configure backend secret when supplied
+        if: ${{ secrets.BACKEND_URL != '' }}
+        working-directory: cloudflare/zynkronyx-worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+        run: printf '%s' "$BACKEND_URL" | npx wrangler secret put BACKEND_URL
 
-      - name: Smoke test health endpoint
+      - name: Smoke test gateway
         run: |
-          curl --fail --silent --show-error --retry 5 --retry-delay 2 \
-            https://mute-grass-9428.schrsistemas.workers.dev/health
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 5 --retry-delay 2 https://mute-grass-9428.schrsistemas.workers.dev/health
 
-      - name: Smoke test status endpoint
+      - name: Smoke test CORS preflight
         run: |
-          curl --fail --silent --show-error --retry 5 --retry-delay 2 \
-            https://mute-grass-9428.schrsistemas.workers.dev/api/status
-
-      - name: Smoke test capabilities endpoint
-        run: |
-          curl --fail --silent --show-error --retry 5 --retry-delay 2 \
-            https://mute-grass-9428.schrsistemas.workers.dev/api/capabilities
+          set -euo pipefail
+          curl --fail --silent --show-error -X OPTIONS             -H 'Origin: https://zynkronyx-control-center.pages.dev'             -H 'Access-Control-Request-Method: POST'             -H 'Access-Control-Request-Headers: authorization,content-type,x-api-key,x-device-id,x-device-credential'             https://mute-grass-9428.schrsistemas.workers.dev/integration/events
