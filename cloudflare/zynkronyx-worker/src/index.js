@@ -1,4 +1,4 @@
-const VERSION = "0.1.0";
+const VERSION = "0.2.0";
 
 const SECURITY_HEADERS = {
   "content-type": "text/html; charset=UTF-8",
@@ -115,6 +115,8 @@ export default {
           { name: "status", method: "GET", path: "/api/status", status: "active" },
           { name: "capabilities", method: "GET", path: "/api/capabilities", status: "active" },
           { name: "database", status: "planned", target: "Cloudflare D1" },
+          { name: "sync-in", method: "POST", path: "/sync/in", status: "backend-ready", target: "Firebird" },
+          { name: "sync-out", method: "GET", path: "/sync/out", status: "backend-ready", target: "Firebird" },
           { name: "authentication", status: "planned" },
         ],
         timestamp: now(),

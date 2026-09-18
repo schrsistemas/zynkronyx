@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-const API = "https://mute-grass-9428.schrsistemas.workers.dev";
+const API = process.env.NEXT_PUBLIC_API_URL || "https://mute-grass-9428.schrsistemas.workers.dev";
 const fallbackServices = [
   ["API Gateway", "unknown", "Worker"],
   ["Database", "planned", "D1"],
@@ -54,6 +54,7 @@ export default function Home() {
           <Nav active={section==="services"} onClick={()=>setSection("services")} icon="◈">Services</Nav>
           <Nav active={section==="api"} onClick={()=>setSection("api")} icon="⌘">API Explorer</Nav>
           <Nav active={section==="database"} onClick={()=>setSection("database")} icon="▣">Database</Nav>
+          <Nav active={section==="sync"} onClick={()=>setSection("sync")} icon="⇄">Sync</Nav>
         </nav>
         <div className="sideBottom"><span className={"dot " + (status?.ok ? "online" : "")}/> {status?.ok ? "All systems operational" : "Checking services..."}</div>
       </aside>
@@ -65,14 +66,15 @@ export default function Home() {
         {section === "overview" && <Overview status={status} latency={latency} services={serviceRows} capabilities={capabilities}/>}
         {section === "services" && <Services services={serviceRows}/>}
         {section === "api" && <ApiExplorer/>}
-        {section === "database" && <Database capabilities={capabilities}/>}
+        {section === "database" && <Database capabilities={capabilities}/>} 
+        {section === "sync" && <SyncConsole/>}
       </main>
     </div>
   );
 }
 
 function Nav({active,onClick,icon,children}) { return <button className={active?"active":""} onClick={onClick}>{icon} <span>{children}</span></button>; }
-function title(s) { return ({overview:"System Overview",services:"Services",api:"API Explorer",database:"Database"})[s]; }
+function title(s) { return ({overview:"System Overview",services:"Services",api:"API Explorer",database:"Database",sync:"Synchronization"})[s]; }
 function findCapability(list,name) { return list.find(x => x.name === name); }
 
 function Overview({status,latency,services,capabilities}) {
@@ -101,6 +103,19 @@ function Services({services}) {
 function ApiExplorer() {
  const endpoints=["/","/health","/api/status","/api/capabilities"];
  return <div className="panel"><p className="lead">Endpoints públicos do gateway. Cada chamada abre a resposta real do Worker.</p>{endpoints.map(path=><div className="endpoint" key={path}><span className="method">GET</span><code>{path}</code><span className="status">active</span><button onClick={()=>window.open(API+path,"_blank","noopener,noreferrer")}>Open ↗</button></div>)}</div>
+}
+
+
+function SyncConsole() {
+  const [payload, setPayload] = useState(JSON.stringify({tabela:"CLIENTE",chave:"123",operacao:"U",dados:{NOME:"Exemplo"}}, null, 2));
+  const [result, setResult] = useState(null);
+  async function send() {
+    try {
+      const response = await fetch(API+"/sync/in", {method:"POST", headers:{"Content-Type":"application/json","x-api-key":"demo"}, body:payload});
+      setResult(await response.json());
+    } catch (error) { setResult({erro:error.message}); }
+  }
+  return <div className="panel"><p className="lead">Console de sincronização e staging.</p><textarea className="jsonEditor" value={payload} onChange={e=>setPayload(e.target.value)} rows={10}/><div className="syncActions"><button onClick={send}>Enviar para staging</button></div>{result && <pre className="resultBox">{JSON.stringify(result,null,2)}</pre>}</div>;
 }
 
 function Database({capabilities}) {
