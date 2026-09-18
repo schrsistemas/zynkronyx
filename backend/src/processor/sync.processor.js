@@ -1,6 +1,7 @@
 const syncRepository = require('../repository/sync.repository');
 const syncHandlers = require('./sync.handler.registry');
 const db = require('../services/db.firebird.service');
+const crypto = require('node:crypto');
 
 class SyncProcessor {
   async process({ limit = 100 } = {}) {
@@ -9,12 +10,18 @@ class SyncProcessor {
     let applied = 0;
     let failed = 0;
     let unsupported = 0;
+    let skipped = 0;
 
     const maxAttempts = Number(process.env.SYNC_MAX_ATTEMPTS || 5);
+    const workerId = process.env.SYNC_WORKER_ID || `zynkronyx-${crypto.randomUUID()}`;
 
     for (const row of rows) {
       try {
-        await syncRepository.markProcessing(row.ID);
+        const claim = await syncRepository.markProcessing(row.ID, workerId);
+        if (!claim) {
+          skipped += 1;
+          continue;
+        }
         claimed += 1;
 
         if (process.env.SYNC_APPLY_ENABLED !== 'true') continue;
@@ -29,19 +36,20 @@ class SyncProcessor {
           await handler(row, tx);
           await tx.execute(`
             UPDATE SYNC_STAGING
-            SET STATUS = 'S', PROCESSADO = 'S'
-            WHERE ID = ? AND STATUS = 'P'
-          `, [row.ID]);
+            SET STATUS = 'S', PROCESSADO = 'S', DATA_PROCESSAMENTO = NULL, WORKER_ID = NULL
+            WHERE ID = ? AND STATUS = 'P' AND WORKER_ID = ?
+          `, [row.ID, workerId]);
         });
         applied += 1;
       } catch (error) {
         failed += 1;
-        const permanent = Number(row.TENTATIVAS || 0) >= maxAttempts;
+        const attempts = Number((await syncRepository.fetchAttemptCount?.(row.ID)) || row.TENTATIVAS || 0);
+        const permanent = attempts >= maxAttempts;
         await syncRepository.markError(row.ID, { permanent }).catch(() => {});
       }
     }
 
-    return { selected: rows.length, claimed, applied, failed, unsupported };
+    return { selected: rows.length, claimed, applied, failed, unsupported, skipped };
   }
 }
 
