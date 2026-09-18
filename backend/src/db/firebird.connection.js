@@ -45,4 +45,29 @@ async function execute(sql, params = []) {
   });
 }
 
-module.exports = { query, execute };
+async function transaction(work) {
+  const db = await getConnection();
+
+  const run = (method, sql, params = []) => new Promise((resolve, reject) => {
+    db[method](sql, params, (err, result) => err ? reject(err) : resolve(result));
+  });
+
+  try {
+    await run('query', 'SET TRANSACTION');
+    const tx = {
+      query: (sql, params = []) => run('query', sql, params),
+      execute: (sql, params = []) => run('execute', sql, params)
+    };
+
+    const result = await work(tx);
+    await run('query', 'COMMIT');
+    db.detach();
+    return result;
+  } catch (error) {
+    try { await run('query', 'ROLLBACK'); } catch (_) {}
+    db.detach();
+    throw error;
+  }
+}
+
+module.exports = { query, execute, transaction };
