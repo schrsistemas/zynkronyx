@@ -1,4 +1,4 @@
-const VERSION = "0.2.0";
+const VERSION = "0.2.1";
 
 const SECURITY_HEADERS = {
   "content-type": "text/html; charset=UTF-8",
