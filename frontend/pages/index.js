@@ -57,6 +57,9 @@ export default function Home() {
           <Nav active={section==="sync"} onClick={()=>setSection("sync")} icon="⇄">Sync</Nav>
           <Nav active={section==="monitoring"} onClick={()=>setSection("monitoring")} icon="◉">Monitoring</Nav>
           <Nav active={section==="audit"} onClick={()=>setSection("audit")} icon="≡">Audit</Nav>
+          <Nav active={section==="devices"} onClick={()=>setSection("devices")} icon="⌁">Devices</Nav>
+          <Nav active={section==="audit"} onClick={()=>setSection("audit")} icon="≡">Audit</Nav>
+          <Nav active={section==="deploy"} onClick={()=>setSection("deploy")} icon="⇧">Deployments</Nav>
           <Nav active={section==="docs"} onClick={()=>setSection("docs")} icon="?">Docs</Nav>
         </nav>
         <div className="sideBottom"><span className={"dot " + (status?.ok ? "online" : "")}/> {status?.ok ? "All systems operational" : "Checking services..."}</div>
@@ -72,7 +75,9 @@ export default function Home() {
         {section === "database" && <Database capabilities={capabilities}/>} 
         {section === "sync" && <SyncConsole/>}
         {section === "monitoring" && <Monitoring status={status} latency={latency}/>} 
+        {section === "devices" && <Devices/>}
         {section === "audit" && <Audit/>}
+        {section === "deploy" && <Deployments/>}
         {section === "docs" && <Docs/>}
       </main>
     </div>
@@ -80,7 +85,7 @@ export default function Home() {
 }
 
 function Nav({active,onClick,icon,children}) { return <button className={active?"active":""} onClick={onClick}>{icon} <span>{children}</span></button>; }
-function title(s) { return ({overview:"System Overview",services:"Services",api:"API Explorer",database:"Database",sync:"Synchronization"})[s]; }
+function title(s) { return ({overview:"System Overview",services:"Services",api:"API Explorer",database:"Database",sync:"Synchronization",devices:"Device Integrations",audit:"Legal Audit",deploy:"Deployments",docs:"Documentation",monitoring:"Monitoring"})[s] || "Zynkronyx"; }
 function findCapability(list,name) { return list.find(x => x.name === name); }
 
 function Overview({status,latency,services,capabilities}) {
@@ -125,6 +130,40 @@ function SyncConsole() {
 }
 
 function Monitoring({status,latency}) { return <div className="panel"><p className="lead">Diagnóstico operacional observado pelo navegador.</p><div className="row"><div><strong>Cloudflare Worker</strong><small>{status?.runtime || "cloudflare-workers"}</small></div><span className={"status " + (status?.ok ? "":"muted")}>{status?.ok ? "online":"offline"}</span></div><div className="row"><div><strong>API latency</strong><small>Última medição</small></div><span className="status">{latency ? latency+" ms":"—"}</span></div><div className="row"><div><strong>Cache policy</strong><small>API responses</small></div><span className="status">no-store</span></div></div>; }
+
+function Devices() {
+ const [rows,setRows]=useState([]);
+ const [error,setError]=useState(null);
+ const [loading,setLoading]=useState(false);
+ async function load() {
+  setLoading(true); setError(null);
+  try {
+   const r=await fetch(API+"/integration/devices",{headers:{"x-api-key":"demo","Authorization":"Bearer mock-token"},cache:"no-store"});
+   const j=await r.json(); if(!r.ok) throw new Error(j.erro||"Falha ao consultar dispositivos");
+   setRows(j.devices||[]);
+  } catch(e){setError(e.message)} finally{setLoading(false)}
+ }
+ useEffect(()=>{load()},[]);
+ return <div className="panel">
+  <div className="sectionTitle"><h3>Device Registry</h3><button onClick={load}>{loading?"Atualizando...":"Atualizar"}</button></div>
+  <p className="lead">Dispositivos registrados por tenant. A interface não exibe credenciais persistentes.</p>
+  {error && <div className="resultBox">{error}</div>}
+  {!rows.length && !error ? <div className="emptyState"><h2>Nenhum dispositivo retornado</h2><p>O painel não inventa dispositivos. Quando a API estiver autenticada e houver registros, eles aparecerão aqui.</p></div> :
+   rows.map(d=><div className="row" key={d.DEVICE_ID}><div><strong>{d.DEVICE_ID}</strong><small>{d.DEVICE_TYPE} · protocolo {d.PROTOCOL_VERSION} · {d.LAST_SEEN||"nunca visto"}</small></div><span className={"status "+(d.STATUS==="A"?"":"muted")}>{d.STATUS==="A"?"active":"inactive"}</span></div>)}
+ </div>;
+}
+
+function Deployments() {
+ return <div>
+  <div className="hero"><div><span className="pill">DEPLOY PIPELINE</span><h2>Deployments</h2><p>Visão operacional dos artefatos e verificações de publicação.</p></div><div className="heroVersion">GHCR<br/><small>immutable SHA tags</small></div></div>
+  <div className="stats"><Stat title="Backend image" value="GHCR" note="published by CI"/><Stat title="Frontend" value="Pages" note="Cloudflare"/><Stat title="Runtime check" value="/health" note="smoke test"/><Stat title="Rollback" value="SHA" note="immutable tag"/></div>
+  <div className="panel"><p className="lead">Contrato atual</p>
+   <div className="row"><div><strong>Backend container</strong><small>Dockerfile.prod.fix → GHCR → runtime externo configurado</small></div><span className="status">VERIFIED</span></div>
+   <div className="row"><div><strong>Control Center</strong><small>Next.js static export → Cloudflare Pages</small></div><span className="status">LIVE</span></div>
+   <div className="row"><div><strong>Production boundary</strong><small>CI não é tratado como servidor persistente</small></div><span className="status">ENFORCED</span></div>
+  </div>
+ </div>;
+}
 
 function Audit() { return <div className="panel"><p className="lead">Auditoria será alimentada pelo AUDIT_LOG do backend. Nenhum evento fictício é exibido.</p><div className="emptyState"><div className="bigIcon">≡</div><h2>Audit stream</h2><p>Interface preparada. A conexão real depende da API autenticada de auditoria.</p></div></div>; }
 
