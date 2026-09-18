@@ -61,7 +61,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
-          wrangler pages deploy out --project-name zynkronyx-control-center --branch main
+          wrangler pages deploy out --project-name zynkronyx-control-center
 
       - name: Verify production URL
         run: |
