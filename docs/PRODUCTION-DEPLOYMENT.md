@@ -30,3 +30,8 @@ The canonical `database/full.sql` schema includes the credential fields required
 - `CREDENTIAL_CREATED_AT`
 
 The registry service stores only a hash of generated device credentials, never the plaintext credential.
+
+
+## Database migration policy
+
+Existing Firebird installations must apply versioned additive migrations before using newer registry features. The migration `database/migrations/2026-09-18-device-lifecycle-location.sql` checks Firebird system metadata before adding device credential, scope, and location columns. The canonical `database/full.sql` remains the bootstrap schema for new installations.
