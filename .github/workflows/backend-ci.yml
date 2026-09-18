@@ -60,7 +60,7 @@ jobs:
           exit 1
       - name: Validate public authentication entrypoint
         run: |
-          curl -fsS -X POST http://localhost:3000/auth/login             -H "Content-Type: application/json"             -d '{"login":"ci"}'
+          test "$(curl -s -o /dev/null -w '%{http_code}'             -X POST http://localhost:3000/auth/login             -H "Content-Type: application/json"             -d '{"login":"ci","password":"ci-password"}')" = "503"
       - name: Validate protected route
         run: |
           test "$(curl -s -o /dev/null -w '%{http_code}'             -H "x-api-key: ci" http://localhost:3000/admin/status)" = "401"
