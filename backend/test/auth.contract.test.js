@@ -23,6 +23,7 @@ function request(app, { method='GET', path='/', headers={}, body } = {}) {
 
 test('auth middleware fails closed when Authorization is missing', async () => {
   process.env.AUTH_TOKEN = 'a'.repeat(32);
+  process.env.DB_DATABASE = 'test';
   const { app } = require('../src/app.production');
   const r = await request(app, { path:'/sync' });
   assert.equal(r.status, 401);
