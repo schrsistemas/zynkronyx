@@ -84,7 +84,7 @@ exports.markProcessing = async (id, workerId = 'zynkronyx') => {
     WHERE ID = ?
       AND (
         STATUS = 'N'
-        OR (STATUS = 'P' AND DATA_PROCESSAMENTO < DATEADD(-1 MINUTE TO CURRENT_TIMESTAMP))
+        OR (STATUS = 'P' AND DATA_PROCESSAMENTO < DATEADD(-${leaseSeconds} SECOND TO CURRENT_TIMESTAMP))
       )
     RETURNING ID, TENTATIVAS
   `, [workerId, id]);
