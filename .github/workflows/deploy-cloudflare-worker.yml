@@ -34,6 +34,11 @@ jobs:
           workingDirectory: cloudflare/zynkronyx-worker
           command: deploy
 
+      - name: Smoke test root version
+        run: |
+          curl --fail --silent --show-error --retry 5 --retry-delay 2 \
+            https://mute-grass-9428.schrsistemas.workers.dev/health | grep '"version": "0.2.1"'
+
       - name: Smoke test health endpoint
         run: |
           curl --fail --silent --show-error --retry 5 --retry-delay 2 \
