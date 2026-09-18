@@ -4,7 +4,7 @@ const API = process.env.NEXT_PUBLIC_API_URL || "https://mute-grass-9428.schrsist
 const fallbackServices = [
   ["API Gateway", "unknown", "Worker"],
   ["Database", "planned", "D1"],
-  ["Observability", "planned", "Tracing"],
+  ["Observability", "planned", "Logs / Metrics"],
   ["DelphiDBUtils", "development", "FireDAC"],
 ];
 
@@ -40,7 +40,7 @@ export default function Home() {
 
   const serviceRows = [
     ["API Gateway", status?.ok ? "online" : "offline", status?.runtime || "Worker"],
-    ["Database", findCapability(capabilities, "database")?.status || "planned", "D1"],
+    ["Database", findCapability(capabilities, "database")?.status || "planned", "Firebird"],
     ["Observability", "planned", "Tracing"],
     ["DelphiDBUtils", "development", "FireDAC"],
   ];
@@ -55,6 +55,9 @@ export default function Home() {
           <Nav active={section==="api"} onClick={()=>setSection("api")} icon="⌘">API Explorer</Nav>
           <Nav active={section==="database"} onClick={()=>setSection("database")} icon="▣">Database</Nav>
           <Nav active={section==="sync"} onClick={()=>setSection("sync")} icon="⇄">Sync</Nav>
+          <Nav active={section==="monitoring"} onClick={()=>setSection("monitoring")} icon="◉">Monitoring</Nav>
+          <Nav active={section==="audit"} onClick={()=>setSection("audit")} icon="≡">Audit</Nav>
+          <Nav active={section==="docs"} onClick={()=>setSection("docs")} icon="?">Docs</Nav>
         </nav>
         <div className="sideBottom"><span className={"dot " + (status?.ok ? "online" : "")}/> {status?.ok ? "All systems operational" : "Checking services..."}</div>
       </aside>
@@ -68,6 +71,9 @@ export default function Home() {
         {section === "api" && <ApiExplorer/>}
         {section === "database" && <Database capabilities={capabilities}/>} 
         {section === "sync" && <SyncConsole/>}
+        {section === "monitoring" && <Monitoring status={status} latency={latency}/>} 
+        {section === "audit" && <Audit/>}
+        {section === "docs" && <Docs/>}
       </main>
     </div>
   );
@@ -90,7 +96,7 @@ function Overview({status,latency,services,capabilities}) {
     <Stat title="Database" value={findCapability(capabilities,"database")?.status === "active" ? "D1" : "NEXT"} note="data layer"/>
   </div>
   <section><div className="sectionTitle"><h3>Service health</h3><span>Live API data</span></div><div className="serviceGrid">{services.map(s=><div className="service" key={s[0]}><div className="serviceIcon">◆</div><div className="serviceName">{s[0]}</div><span className={"status " + (s[1]==="online"?"":"muted")}>{s[1]}</span><div className="serviceMeta">{s[2]}</div></div>)}</div></section>
-  <section><div className="sectionTitle"><h3>Architecture</h3><span>Current foundation</span></div><div className="architecture"><div>CLIENTS<span>Delphi · Web · Android</span></div><b>→</b><div>EDGE API<span>Cloudflare Worker</span></div><b>→</b><div>DATA<span>Cloudflare D1</span></div></div></section>
+  <section><div className="sectionTitle"><h3>Architecture</h3><span>Current foundation</span></div><div className="architecture"><div>CLIENTS<span>Delphi · Web · Android</span></div><b>→</b><div>EDGE<span>Cloudflare Worker</span></div><b>→</b><div>BACKEND<span>Node · Express</span></div><b>→</b><div>DATA<span>Firebird</span></div></div></section>
  </div>
 }
 
@@ -118,7 +124,13 @@ function SyncConsole() {
   return <div className="panel"><p className="lead">Console de sincronização e staging.</p><textarea className="jsonEditor" value={payload} onChange={e=>setPayload(e.target.value)} rows={10}/><div className="syncActions"><button onClick={send}>Enviar para staging</button></div>{result && <pre className="resultBox">{JSON.stringify(result,null,2)}</pre>}</div>;
 }
 
+function Monitoring({status,latency}) { return <div className="panel"><p className="lead">Diagnóstico operacional observado pelo navegador.</p><div className="row"><div><strong>Cloudflare Worker</strong><small>{status?.runtime || "cloudflare-workers"}</small></div><span className={"status " + (status?.ok ? "":"muted")}>{status?.ok ? "online":"offline"}</span></div><div className="row"><div><strong>API latency</strong><small>Última medição</small></div><span className="status">{latency ? latency+" ms":"—"}</span></div><div className="row"><div><strong>Cache policy</strong><small>API responses</small></div><span className="status">no-store</span></div></div>; }
+
+function Audit() { return <div className="panel"><p className="lead">Auditoria será alimentada pelo AUDIT_LOG do backend. Nenhum evento fictício é exibido.</p><div className="emptyState"><div className="bigIcon">≡</div><h2>Audit stream</h2><p>Interface preparada. A conexão real depende da API autenticada de auditoria.</p></div></div>; }
+
+function Docs() { return <div className="panel"><p className="lead">Documentação operacional do projeto.</p><div className="row"><div><strong>Architecture</strong><small>Fluxos, componentes e responsabilidades</small></div><span className="status">docs/</span></div><div className="row"><div><strong>Build ALL</strong><small>Critérios de implementação e deploy</small></div><span className="status">BUILD-ALL</span></div><div className="row"><div><strong>API</strong><small>Endpoints públicos atuais</small></div><span className="status">LIVE</span></div></div>; }
+
 function Database({capabilities}) {
  const db=findCapability(capabilities,"database");
- return <div className="emptyState"><div className="bigIcon">▣</div><h2>Data layer</h2><p>Status informado pela API: <strong>{db?.status || "planned"}</strong>. O próximo passo é criar o schema D1 e expor operações reais pela API.</p><div className="progress"><span style={{width:db?.status==="active"?"100%":"42%"}}/></div><small>{db?.status==="active"?"Connected":"Foundation"}</small></div>
+ return <div className="emptyState"><div className="bigIcon">▣</div><h2>Data layer</h2><p>Status informado pela API: <strong>{db?.status || "planned"}</strong>. A camada de dados operacional alvo é Firebird. A interface exibirá dados reais quando a API autenticada de banco estiver disponível.</p><div className="progress"><span style={{width:db?.status==="active"?"100%":"42%"}}/></div><small>{db?.status==="active"?"Connected":"Foundation"}</small></div>
 }
