@@ -51,7 +51,8 @@ jobs:
           if node -e 'const p=JSON.parse(process.argv[1]); process.exit(p.some(x => x.name === "zynkronyx-control-center") ? 0 : 1)' "$projects"; then
             echo "Pages project exists."
           else
-            wrangler pages project create zynkronyx-control-center --production-branch main
+            echo "Pages project was not found in the account."
+            exit 1
           fi
 
       - name: Deploy Pages
