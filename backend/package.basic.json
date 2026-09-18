@@ -1,12 +1,15 @@
 {
   "name": "zynkronyx-backend",
   "version": "1.0.0",
+  "description": "Zynkronyx Backend API",
   "main": "src/app.full.js",
   "scripts": {
-    "start": "node src/app.full.js"
+    "start": "node src/app.full.js",
+    "test": "node --test"
   },
   "dependencies": {
     "express": "^4.19.2",
+    "node-firebird": "^1.1.8",
     "pino": "^9.0.0"
   }
 }
