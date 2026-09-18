@@ -1,4 +1,7 @@
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
+
+const RadarMap = dynamic(() => import("../components/RadarMap"), { ssr:false, loading:() => <div className="radarMap radarLoading">Carregando mapa operacional…</div> });
 
 const API = process.env.NEXT_PUBLIC_API_URL || "https://mute-grass-9428.schrsistemas.workers.dev";
 const fallbackServices = [
@@ -166,24 +169,26 @@ function Devices() {
 }
 
 function Radar() {
- const [devices,setDevices]=useState([]); const [error,setError]=useState(null); const [loading,setLoading]=useState(false);
- async function load(){setLoading(true);setError(null);try{const r=await fetch(API+"/integration/devices",{headers:authHeaders(),cache:"no-store"});const j=await r.json();if(!r.ok)throw new Error(j.erro||"Falha ao carregar radar");setDevices(j.devices||[])}catch(e){setError(e.message)}finally{setLoading(false)}}
- useEffect(()=>{load()},[]);
- const located=devices.filter(d=>Number.isFinite(Number(d.LAST_LATITUDE))&&Number.isFinite(Number(d.LAST_LONGITUDE)));
+ const [devices,setDevices]=useState([]); const [error,setError]=useState(null); const [loading,setLoading]=useState(false); const [type,setType]=useState(""); const [activeOnly,setActiveOnly]=useState(true); const [selected,setSelected]=useState(null);
+ const auth=authHeaders();
+ async function load(){setLoading(true);setError(null);try{const r=await fetch(API+"/integration/devices",{headers:auth,cache:"no-store"});const j=await r.json();if(!r.ok)throw new Error(j.erro||"Falha ao carregar radar");setDevices(j.devices||[])}catch(e){setError(e.message)}finally{setLoading(false)}} 
+ useEffect(()=>{load();const t=setInterval(load,30000);return()=>clearInterval(t)},[]);
+ const visible=devices.filter(d=>(!activeOnly||d.STATUS==="A")&&(!type||d.DEVICE_TYPE===type)&&Number.isFinite(Number(d.LAST_LATITUDE))&&Number.isFinite(Number(d.LAST_LONGITUDE)));
  return <div>
-  <div className="hero"><div><span className="pill">RADAR VISUAL</span><h2>Device Radar</h2><p>Mapa operacional preparado para posições reportadas pelos dispositivos.</p></div><div className="heroVersion">{located.length}<br/><small>posições conhecidas</small></div></div>
+  <div className="hero"><div><span className="pill">RADAR 2.0</span><h2>Device Map</h2><p>Mapa cartográfico baseado exclusivamente nas posições reportadas pelos dispositivos.</p></div><div className="heroVersion">{visible.length}<br/><small>pontos visíveis</small></div></div>
   <div className="panel radarPanel">
-   <div className="sectionTitle"><h3>Mapa</h3><button onClick={load}>{loading?"Atualizando...":"Atualizar"}</button></div>
-   {error&&<div className="resultBox">{error}</div>}
-   <div className="radarMap">
-    <div className="radarGrid"/>
-    <div className="radarSweep"/>
-    {located.map((d,i)=>{const lon=Number(d.LAST_LONGITUDE),lat=Number(d.LAST_LATITUDE);const x=((lon+180)/360)*100,y=((90-lat)/180)*100;return <div key={d.DEVICE_ID} className="radarPin" style={{left:x+"%",top:y+"%"}} title={d.DEVICE_ID}>●<span>{d.DEVICE_ID}</span></div>})}
-    {!located.length&&<div className="radarEmpty"><strong>Sem coordenadas reportadas</strong><small>O radar não cria posições fictícias. Quando um dispositivo enviar latitude/longitude válidas, o ponto será plotado automaticamente.</small></div>}
+   <div className="sectionTitle"><h3>Mapa operacional</h3><span>{loading?"Atualizando…":"Atualização automática · 30s"}</span></div>
+   <div className="radarControls">
+    <select value={type} onChange={e=>setType(e.target.value)}><option value="">Todos os tipos</option>{["arduino","raspberry-pi","pic","android","ios","delphi","simulator"].map(x=><option key={x}>{x}</option>)}</select>
+    <label><input type="checkbox" checked={activeOnly} onChange={e=>setActiveOnly(e.target.checked)}/> somente ativos</label>
+    <button onClick={load}>{loading?"Atualizando…":"Atualizar agora"}</button>
    </div>
-   <div className="radarLegend"><span>● Ativo</span><span>{devices.length} dispositivos registrados</span><span>{located.length} com localização</span></div>
+   {error&&<div className="resultBox">{error}</div>}
+   {visible.length ? <RadarMap devices={visible} selectedId={selected?.DEVICE_ID} onSelect={setSelected}/> : <div className="radarEmpty radarMap"><strong>Sem coordenadas reportadas para os filtros atuais</strong><small>O mapa não cria posições fictícias. O ponto aparece somente quando o dispositivo envia latitude e longitude válidas.</small></div>}
+   <div className="radarLegend"><span>{visible.length} pontos</span><span>{devices.length} dispositivos</span><span>Origem: dispositivo</span></div>
   </div>
-  <div className="panel"><p className="lead">Privacidade e precisão</p><div className="row"><div><strong>Origem</strong><small>Somente coordenadas explicitamente enviadas pelo dispositivo.</small></div><span className="status">NO INFERENCE</span></div><div className="row"><div><strong>Firebird</strong><small>Localização é opcional e não substitui endereço residencial.</small></div><span className="status">COARSE-READY</span></div></div>
+  {selected&&<div className="panel"><div className="sectionTitle"><h3>{selected.DEVICE_ID}</h3><button onClick={()=>setSelected(null)}>Fechar</button></div><div className="row"><div><strong>Tipo</strong><small>{selected.DEVICE_TYPE}</small></div><span className="status">{selected.STATUS==="A"?"active":"inactive"}</span></div><div className="row"><div><strong>Coordenadas</strong><small>{selected.LAST_LATITUDE}, {selected.LAST_LONGITUDE}</small></div><span className="status">REPORTED</span></div><div className="row"><div><strong>Última atualização</strong><small>{selected.LOCATION_UPDATED_AT||"—"}</small></div><span className="status">UTC/SERVER</span></div></div>}
+  <div className="panel"><p className="lead">Privacidade</p><div className="row"><div><strong>Sem inferência geográfica</strong><small>O Control Center não geocodifica nem inventa a posição.</small></div><span className="status">NO INFERENCE</span></div><div className="row"><div><strong>Dados de origem</strong><small>Latitude/longitude reportadas pelo dispositivo e persistidas pelo backend.</small></div><span className="status">PROVENANCE</span></div></div>
  </div>;
 }
 
