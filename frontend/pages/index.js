@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 const API = process.env.NEXT_PUBLIC_API_URL || "https://mute-grass-9428.schrsistemas.workers.dev";
 const fallbackServices = [
   ["API Gateway", "unknown", "Worker"],
-  ["Database", "planned", "D1"],
+  ["Database", "planned", "Firebird"],
   ["Observability", "planned", "Logs / Metrics"],
   ["DelphiDBUtils", "development", "FireDAC"],
 ];
@@ -93,7 +93,7 @@ function Overview({status,latency,services,capabilities}) {
     <Stat title="API round trip" value={latency ? latency + " ms" : "—"} note="live browser check"/>
     <Stat title="Services" value={services.length} note="registered"/>
     <Stat title="Environment" value={status?.environment?.toUpperCase() || "PUBLIC"} note="serverless"/>
-    <Stat title="Database" value={findCapability(capabilities,"database")?.status === "active" ? "D1" : "NEXT"} note="data layer"/>
+    <Stat title="Database" value={findCapability(capabilities,"database")?.status === "active" ? "Firebird" : "NEXT"} note="data layer"/>
   </div>
   <section><div className="sectionTitle"><h3>Service health</h3><span>Live API data</span></div><div className="serviceGrid">{services.map(s=><div className="service" key={s[0]}><div className="serviceIcon">◆</div><div className="serviceName">{s[0]}</div><span className={"status " + (s[1]==="online"?"":"muted")}>{s[1]}</span><div className="serviceMeta">{s[2]}</div></div>)}</div></section>
   <section><div className="sectionTitle"><h3>Architecture</h3><span>Current foundation</span></div><div className="architecture"><div>CLIENTS<span>Delphi · Web · Android</span></div><b>→</b><div>EDGE<span>Cloudflare Worker</span></div><b>→</b><div>BACKEND<span>Node · Express</span></div><b>→</b><div>DATA<span>Firebird</span></div></div></section>
