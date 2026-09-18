@@ -34,6 +34,25 @@ async function query(sql, params = []) {
   });
 }
 
+async function withTransaction(work) {
+  const db = await getConnection();
+  let tx;
+  try {
+    tx = await new Promise((resolve, reject) => db.transaction(Firebird.ISOLATION_READ_COMMITTED, (err, t) => err ? reject(err) : resolve(t)));
+    const result = await work({
+      query: (sql, params = []) => new Promise((resolve, reject) => tx.query(sql, params, (err, rows) => err ? reject(err) : resolve(rows))),
+      execute: (sql, params = []) => new Promise((resolve, reject) => tx.query(sql, params, (err, rows) => err ? reject(err) : resolve(rows)))
+    });
+    await new Promise((resolve, reject) => tx.commit(err => err ? reject(err) : resolve()));
+    return result;
+  } catch (error) {
+    if (tx) await new Promise(resolve => tx.rollback(() => resolve()));
+    throw error;
+  } finally {
+    await new Promise(resolve => db.detach(() => resolve()));
+  }
+}
+
 async function execute(sql, params = []) {
   const db = await getConnection();
   return new Promise((resolve, reject) => {
