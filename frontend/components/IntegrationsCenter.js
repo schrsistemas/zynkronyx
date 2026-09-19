@@ -39,7 +39,7 @@ export default function IntegrationsCenter() {
       };
       const r=await fetch(API+"/integration/events",{
         method:"POST",
-        headers:{...headers(),"x-device-id":form.device_id,"x-device-credential":credential},
+        headers:{...headers(),"x-device-id":form.device_id,"x-device-credential":credential,...(form.correlation_id?{"x-correlation-id":form.correlation_id}: {})},
         body:JSON.stringify(body)
       });
       const text=await r.text();
