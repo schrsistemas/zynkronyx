@@ -28,6 +28,16 @@ async function finish(tenantId,id,status,result){
   return{status,id};
 }
 
+function selectPromptVersion({tenantId,stableId,requestKey=null,mode='TENANT_CANARY',trafficPercent=0,candidateId}={}) {
+  const normalizedMode=String(mode||'TENANT_CANARY').trim().toUpperCase();
+  const key=normalizedMode==='TRAFFIC_CANARY'
+    ? String(tenantId)+':'+String(requestKey||'')
+    : String(tenantId)+':'+String(stableId||'stable');
+  if(normalizedMode==='TRAFFIC_CANARY'&&!requestKey) return stableId;
+  const seed=hashBucket(key);
+  return seed<Number(trafficPercent||0)?Number(candidateId):stableId;
+}
+
 async function choose(tenantId,stableId,requestKey=null){
   const rows=await db.query(
     "SELECT PROMPT_VERSION_ID,BASELINE_VERSION_ID,MODE,TRAFFIC_PERCENT FROM AI_PROMPT_RELEASE WHERE TENANT_ID=? AND STATUS='RUNNING' ORDER BY STARTED_AT DESC,ID DESC",
@@ -35,14 +45,7 @@ async function choose(tenantId,stableId,requestKey=null){
   );
   const rel=rows[0];
   if(!rel) return stableId;
-  const mode=String(rel.MODE||'TENANT_CANARY').trim().toUpperCase();
-  const key=mode==='TRAFFIC_CANARY'
-    ? String(tenantId)+':'+String(requestKey||'')
-    : String(tenantId)+':'+String(stableId||'stable');
-  // Never silently enable request-level distribution when no stable request key exists.
-  if(mode==='TRAFFIC_CANARY'&&!requestKey) return stableId;
-  const seed=hashBucket(key);
-  return seed<Number(rel.TRAFFIC_PERCENT||0)?Number(rel.PROMPT_VERSION_ID):stableId;
+  return selectPromptVersion({tenantId,stableId,requestKey,mode:rel.MODE,trafficPercent:rel.TRAFFIC_PERCENT,candidateId:rel.PROMPT_VERSION_ID});
 }
 
-module.exports={create,list,finish,choose,hashBucket};
+module.exports={create,list,finish,choose,hashBucket,selectPromptVersion};
