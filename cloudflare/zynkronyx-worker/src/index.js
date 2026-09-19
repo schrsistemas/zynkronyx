@@ -1,3 +1,6 @@
+import { ZynkronyxOrchestration } from "./workflow.js";
+export { ZynkronyxOrchestration };
+
 const VERSION = "0.3.3";
 
 const ALLOWED_ORIGINS = new Set([
