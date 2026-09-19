@@ -7,7 +7,7 @@ function clean(value,max=2000){return String(value??'').trim().slice(0,max);}
 function notFound(code,status=404){return Object.assign(new Error(code),{status});}
 async function nextId(){return db.nextId('AI_REFINEMENT_ITEM');}
 async function get(tenantId,id){
-  const rows=await db.query('SELECT ID,TENANT_ID,AUDIT_ID,PROMPT_VERSION_ID,FEEDBACK_ID,TYPE,SOURCE,TITLE,PROPOSED_CHANGE_JSON,STATUS,CREATED_BY,REVIEWED_BY,CREATED_AT,REVIEWED_AT FROM AI_REFINEMENT_ITEM WHERE ID=? AND TENANT_ID=?',[Number(id),tenantId]);
+  const rows=await db.query('SELECT ID,TENANT_ID,AUDIT_ID,PROMPT_VERSION_ID,FEEDBACK_ID,TYPE,SOURCE,TITLE,PROPOSED_CHANGE_JSON,STATUS,ACCEPT_IDEMPOTENCY_KEY,CREATED_BY,REVIEWED_BY,CREATED_AT,REVIEWED_AT FROM AI_REFINEMENT_ITEM WHERE ID=? AND TENANT_ID=?',[Number(id),tenantId]);
   if(!rows[0])throw notFound('AI_REFINEMENT_NOT_FOUND');
   return rows[0];
 }
