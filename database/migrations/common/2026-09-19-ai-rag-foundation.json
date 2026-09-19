@@ -10,6 +10,8 @@
     "rebuildableDerivedIndexes": true,
     "auditability": true,
     "evaluation": true,
-    "promptReleaseGovernance": true
+    "promptReleaseGovernance": true,
+    "evaluationLineage": true,
+    "promotionMinimumSample": true
   }
 }
