@@ -62,6 +62,7 @@ export default function Home() {
           <Nav active={section==="sync"} onClick={()=>setSection("sync")} icon="⇄">Sync</Nav>
           <Nav active={section==="monitoring"} onClick={()=>setSection("monitoring")} icon="◉">Monitoring</Nav>
           <Nav active={section==="security"} onClick={()=>setSection("security")} icon="⌑">Security</Nav>
+          <Nav active={section==="ai"} onClick={()=>setSection("ai")} icon="✦">AI / RAG</Nav>
           <Nav active={section==="radar"} onClick={()=>setSection("radar")} icon="⌖">Radar</Nav>
           <Nav active={section==="devices"} onClick={()=>setSection("devices")} icon="⌁">Devices</Nav>
           <Nav active={section==="integrations"} onClick={()=>setSection("integrations")} icon="⚙">Integrations</Nav>
@@ -83,6 +84,7 @@ export default function Home() {
         {section === "sync" && <SyncConsole/>}
         {section === "monitoring" && <Monitoring status={status} latency={latency}/>} 
         {section === "security" && <Security onAuth={()=>setAuthVersion(v=>v+1)}/>}
+        {section === "ai" && <AICenter authVersion={authVersion}/>}
         {section === "radar" && <Radar/>}
         {section === "devices" && <Devices/>}
         {section === "integrations" && <IntegrationsCenter/>}
@@ -95,7 +97,7 @@ export default function Home() {
 }
 
 function Nav({active,onClick,icon,children}) { return <button className={active?"active":""} onClick={onClick}>{icon} <span>{children}</span></button>; }
-function title(s) { return ({overview:"System Overview",services:"Services",api:"API Explorer",database:"Database",sync:"Synchronization",devices:"Device Integrations",audit:"Legal Audit",deploy:"Deployments",docs:"Documentation",integrations:"Integrations & Simulator",monitoring:"Monitoring",radar:"Radar Visual",security:"Security"})[s] || "Zynkronyx"; }
+function title(s) { return ({overview:"System Overview",services:"Services",api:"API Explorer",database:"Database",sync:"Synchronization",devices:"Device Integrations",audit:"Legal Audit",deploy:"Deployments",docs:"Documentation",integrations:"Integrations & Simulator",monitoring:"Monitoring",radar:"Radar Visual",security:"Security",ai:"AI / RAG"})[s] || "Zynkronyx"; }
 function authHeaders(){ if(typeof window==="undefined") return {}; const token=sessionStorage.getItem("zynkronyx_token"); const key=process.env.NEXT_PUBLIC_TENANT_API_KEY; return {...(key?{"x-api-key":key}:{}),...(token?{Authorization:"Bearer "+token}:{})}; }
 function findCapability(list,name) { return list.find(x => x.name === name); }
 
@@ -192,6 +194,60 @@ function Radar() {
   </div>
   {selected&&<div className="panel"><div className="sectionTitle"><h3>{selected.DEVICE_ID}</h3><button onClick={()=>setSelected(null)}>Fechar</button></div><div className="row"><div><strong>Tipo</strong><small>{selected.DEVICE_TYPE}</small></div><span className="status">{selected.STATUS==="A"?"active":"inactive"}</span></div><div className="row"><div><strong>Coordenadas</strong><small>{selected.LAST_LATITUDE}, {selected.LAST_LONGITUDE}</small></div><span className="status">REPORTED</span></div><div className="row"><div><strong>Última atualização</strong><small>{selected.LOCATION_UPDATED_AT||"—"}</small></div><span className="status">UTC/SERVER</span></div></div>}
   <div className="panel"><p className="lead">Privacidade</p><div className="row"><div><strong>Sem inferência geográfica</strong><small>O Control Center não geocodifica nem inventa a posição.</small></div><span className="status">NO INFERENCE</span></div><div className="row"><div><strong>Dados de origem</strong><small>Latitude/longitude reportadas pelo dispositivo e persistidas pelo backend.</small></div><span className="status">PROVENANCE</span></div></div>
+ </div>;
+}
+
+
+function AICenter({authVersion}) {
+ const [status,setStatus]=useState(null);
+ const [query,setQuery]=useState("");
+ const [result,setResult]=useState(null);
+ const [loading,setLoading]=useState(false);
+ const [error,setError]=useState(null);
+
+ useEffect(()=>{let alive=true;async function load(){try{
+   const r=await fetch(API+"/ai/status",{headers:authHeaders(),cache:"no-store"});
+   const j=await r.json();
+   if(alive)setStatus(r.ok?j:{ok:false,error:j.error||j.erro||"Falha ao consultar AI"});
+ }catch(e){if(alive)setStatus({ok:false,error:e.message})}}
+ load();return()=>{alive=false}},[authVersion]);
+
+ async function ask(e){
+  e.preventDefault();if(!query.trim())return;
+  setLoading(true);setError(null);setResult(null);
+  try{
+   const r=await fetch(API+"/ai/query",{method:"POST",headers:{"Content-Type":"application/json",...authHeaders()},body:JSON.stringify({query:query.trim()})});
+   const j=await r.json();if(!r.ok)throw new Error(j.error||j.erro||"Falha na consulta AI");
+   setResult(j);
+  }catch(e){setError(e.message)}finally{setLoading(false)}
+ }
+ return <div>
+  <div className="hero">
+   <div><span className="pill">AI PLATFORM</span><h2>AI / RAG Control</h2><p>Operação observável de RAG, prompts versionados, provider e avaliação.</p></div>
+   <div className="heroVersion">{status?.enabled?"ENABLED":"NOT READY"}<br/><small>{status?.provider||"provider"}</small></div>
+  </div>
+  <div className="stats">
+   <Stat title="AI" value={status?.enabled?"ON":"OFF"} note="runtime configuration"/>
+   <Stat title="RAG" value={status?.rag?.enabled?"ON":"OFF"} note="derived retrieval"/>
+   <Stat title="Model" value={status?.model||"—"} note="configured provider"/>
+   <Stat title="Prompt" value={status?.promptVersion||"—"} note="active baseline"/>
+  </div>
+  <div className="panel">
+   <div className="sectionTitle"><h3>Consulta controlada</h3><span>Tenant + authorization + audit</span></div>
+   <form className="securityForm" onSubmit={ask}>
+    <textarea className="jsonEditor" rows={5} value={query} onChange={e=>setQuery(e.target.value)} placeholder="Pergunte sobre conteúdo autorizado..." />
+    <button type="submit" disabled={loading}>{loading?"Consultando...":"Consultar AI"}</button>
+   </form>
+   {error&&<div className="resultBox">{error}</div>}
+   {result&&<pre className="resultBox">{JSON.stringify(result,null,2)}</pre>}
+  </div>
+  <div className="panel">
+   <div className="sectionTitle"><h3>Governança</h3><span>AI lifecycle</span></div>
+   <div className="row"><div><strong>Source of truth</strong><small>{status?.rag?.sourceOfTruth||"configured-transactional-sgbd"}</small></div><span className="status">TRANSACTIONAL</span></div>
+   <div className="row"><div><strong>Vector index</strong><small>{status?.rag?.vectorIndex||"derived"}</small></div><span className="status">DERIVED</span></div>
+   <div className="row"><div><strong>SQL generation</strong><small>LLM não executa SQL gerado</small></div><span className="status">BLOCKED</span></div>
+   <div className="row"><div><strong>Mutable actions</strong><small>Exigem autorização explícita</small></div><span className="status">AUTHORIZED</span></div>
+  </div>
  </div>;
 }
 
