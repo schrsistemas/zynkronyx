@@ -61,6 +61,14 @@ jobs:
       - name: Validate public authentication entrypoint
         run: |
           test "$(curl -s -o /dev/null -w '%{http_code}'             -X POST http://localhost:3000/auth/login             -H "Content-Type: application/json"             -d '{"login":"ci","password":"ci-password"}')" = "503"
+      - name: Validate readiness endpoint
+        run: |
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/ready)" = "503"
+      - name: Validate security headers
+        run: |
+          curl -fsSI http://localhost:3000/health | grep -qi '^x-content-type-options: nosniff'
+          curl -fsSI http://localhost:3000/health | grep -qi '^x-frame-options: DENY'
+          curl -fsSI http://localhost:3000/health | grep -qi '^x-correlation-id:' || true
       - name: Validate protected route
         run: |
           test "$(curl -s -o /dev/null -w '%{http_code}'             -H "x-api-key: ci" http://localhost:3000/admin/status)" = "401"
