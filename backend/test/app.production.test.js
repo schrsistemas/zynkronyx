@@ -46,7 +46,7 @@ test('login rejects an empty login', () => withServer(async () => {
 }));
 
 test('business routes reject unknown tenant API keys', () => withServer(async () => {
-  const res = await request('GET', '/sync/out?ultima_data=2026-01-01', undefined, { 'x-api-key': 'ci' });
+  const res = await request('GET', '/sync/out?ultima_data=2026-01-01', undefined, { 'x-api-key': 'x'.repeat(101) });
   assert.equal(res.status, 401);
 }));
 
