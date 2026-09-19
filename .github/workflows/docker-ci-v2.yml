@@ -11,9 +11,23 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build image
         run: docker build -f Dockerfile.prod -t zynkronyx:test .
-      - name: Module load smoke test
+      - name: Load production logger
+        run: docker run --rm zynkronyx:test node -e "require('./src/utils/logger'); console.log('LOGGER_OK')"
+      - name: Load database adapter
+        run: docker run --rm zynkronyx:test node -e "require('./src/db/database'); console.log('DATABASE_OK')"
+      - name: Load core routes
         run: |
-          docker run --rm zynkronyx:test node -e "require('./src/app.production'); console.log('PRODUCTION_MODULE_LOAD_OK')"
+          docker run --rm zynkronyx:test node -e "require('./src/routes/auth.basic'); console.log('AUTH_ROUTE_OK')"
+          docker run --rm zynkronyx:test node -e "require('./src/routes/sync.routes'); console.log('SYNC_ROUTE_OK')"
+          docker run --rm zynkronyx:test node -e "require('./src/routes/device.routes'); console.log('DEVICE_ROUTE_OK')"
+      - name: Load AI and sales routes
+        run: |
+          docker run --rm zynkronyx:test node -e "require('./src/routes/ai.routes'); console.log('AI_ROUTE_OK')"
+          docker run --rm zynkronyx:test node -e "require('./src/routes/sales.routes'); console.log('SALES_ROUTE_OK')"
+      - name: Load fiscal route
+        run: docker run --rm zynkronyx:test node -e "require('./src/routes/fiscal.routes'); console.log('FISCAL_ROUTE_OK')"
+      - name: Load production app
+        run: docker run --rm zynkronyx:test node -e "require('./src/app.production'); console.log('PRODUCTION_APP_OK')"
       - name: Run container
         run: |
           docker run -d -p 3000:3000 --name ztest             -e AUTH_LOGIN=ci             -e AUTH_PASSWORD=ci-password-123             -e AUTH_TOKEN=ci-token-0123456789-0123456789-012345             zynkronyx:test
