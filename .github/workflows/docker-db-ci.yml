@@ -20,7 +20,7 @@ jobs:
         run: docker build -f Dockerfile.prod -t zynkronyx:test .
       - name: Run container
         run: |
-          docker run -d -p 3000:3000 --name zdbtest             -e AUTH_LOGIN=ci             -e AUTH_PASSWORD=ci-password-123             -e AUTH_TOKEN=ci-token-0123456789-012345             -e DB_HOST=host.docker.internal             -e DB_PORT=3050             -e DB_USER=SYSDBA             -e DB_PASSWORD=masterkey             --add-host=host.docker.internal:host-gateway             zynkronyx:test
+          docker run -d -p 3000:3000 --name zdbtest             -e AUTH_LOGIN=ci             -e AUTH_PASSWORD=ci-password-123             -e AUTH_TOKEN=ci-token-0123456789-0123456789-012345             -e DB_HOST=host.docker.internal             -e DB_PORT=3050             -e DB_USER=SYSDBA             -e DB_PASSWORD=masterkey             --add-host=host.docker.internal:host-gateway             zynkronyx:test
       - name: Wait for API (retry)
         run: |
           for i in {1..25}; do
