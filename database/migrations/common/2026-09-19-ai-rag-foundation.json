@@ -1,6 +1,6 @@
 {
   "migration": "2026-09-19-ai-rag-foundation",
-  "version": 3,
+  "version": 4,
   "purpose": "AI/RAG governance foundation",
   "sourceOfTruth": "configured-transactional-sgbd",
   "entities": [
@@ -13,7 +13,8 @@
     "AI_PROMPT_VERSION",
     "AI_PROMPT_RELEASE",
     "AI_QUERY_FEEDBACK",
-    "AI_REFINEMENT_ITEM"
+    "AI_REFINEMENT_ITEM",
+    "AI_PROMPT_PROMOTION_AUDIT"
   ],
   "requirements": {
     "tenantIsolation": true,
@@ -30,6 +31,7 @@
     "feedbackRefinementLineage": true,
     "promptRefinementBaseLineage": true,
     "canaryBeforePromotion": true,
-    "promotionRequiresPassedCanary": true
+    "promotionRequiresPassedCanary": true,
+    "promotionDecisionLineage": true
   }
 }
