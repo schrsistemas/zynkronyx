@@ -20,6 +20,20 @@ jobs:
           docker run --rm zynkronyx:test node -e "require('./src/routes/auth.basic'); console.log('AUTH_ROUTE_OK')"
           docker run --rm zynkronyx:test node -e "require('./src/routes/sync.routes'); console.log('SYNC_ROUTE_OK')"
           docker run --rm zynkronyx:test node -e "require('./src/routes/device.routes'); console.log('DEVICE_ROUTE_OK')"
+      - name: Load AI provider
+        run: docker run --rm zynkronyx:test node -e "require('./src/services/ai.provider'); console.log('AI_PROVIDER_OK')"
+      - name: Load RAG service
+        run: docker run --rm zynkronyx:test node -e "require('./src/services/rag.service'); console.log('RAG_SERVICE_OK')"
+      - name: Load AI audit
+        run: docker run --rm zynkronyx:test node -e "require('./src/services/ai.audit.service'); console.log('AI_AUDIT_OK')"
+      - name: Load AI prompt
+        run: docker run --rm zynkronyx:test node -e "require('./src/services/ai.prompt.service'); console.log('AI_PROMPT_OK')"
+      - name: Load AI release
+        run: docker run --rm zynkronyx:test node -e "require('./src/services/ai.release.service'); console.log('AI_RELEASE_OK')"
+      - name: Load AI evaluation
+        run: docker run --rm zynkronyx:test node -e "require('./src/services/ai.eval.service'); console.log('AI_EVAL_OK')"
+      - name: Load AI service
+        run: docker run --rm zynkronyx:test node -e "require('./src/services/ai.service'); console.log('AI_SERVICE_OK')"
       - name: Load AI route
         run: docker run --rm zynkronyx:test node -e "require('./src/routes/ai.routes'); console.log('AI_ROUTE_OK')"
       - name: Load sales route
