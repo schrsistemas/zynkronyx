@@ -30,7 +30,7 @@ jobs:
       - name: Test endpoints
         run: |
           curl -f http://localhost:3000/health
-          curl -f -X POST http://localhost:3000/auth/login -H "Content-Type: application/json" -d '{"login":"ci"}'
+          curl -f -X POST http://localhost:3000/auth/login -H "Content-Type: application/json" -d '{"login":"ci","password":"ci-password-123"}'
 
       - name: Logs (debug)
         if: failure()
