@@ -58,7 +58,7 @@ const dialect = {
   limit: (sql, n) => sql.replace(/^SELECT /i, 'SELECT FIRST ' + Number(n) + ' '),
   currentTimestamp: 'CURRENT_TIMESTAMP',
   contains: (column, placeholder) => `UPPER(${column}) CONTAINING ${placeholder}`,
-  lock: 'WITH LOCK'
+  lock: (sql) => sql + ' WITH LOCK'
 };
 
 async function nextId(resource) {
