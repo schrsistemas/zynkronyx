@@ -10,6 +10,7 @@ function canonical(value) {
   return JSON.stringify(value);
 }
 function hash(value) { return crypto.createHash('sha256').update(canonical(value)).digest('hex'); }
+function limitSelect(columns, fromSql, n) { return db.dialect().limit(`SELECT ${columns} FROM ${fromSql}`, n); }
 function validateEvent(event) {
   if (!event || typeof event !== 'object' || Array.isArray(event)) throw new Error('Evento invalido');
   if (typeof event.event_id !== 'string' || !event.event_id.trim() || event.event_id.length > 100) throw new Error('event_id obrigatorio');
@@ -24,7 +25,7 @@ exports.ingest = async (tenantId, event, correlationId) => {
   const eventHash = hash(event);
   const payloadHash = hash(event.payload ?? null);
   return db.withTransaction(async (tx) => {
-    const existing = await tx.query(`SELECT FIRST 1 EVENT_ID, EVENT_HASH FROM LEGAL_EVENT_LOG WHERE TENANT_ID = ? AND EVENT_ID = ?`,[tenantId,event.event_id]);
+    const existing = await tx.query(limitSelect('EVENT_ID, EVENT_HASH','LEGAL_EVENT_LOG WHERE TENANT_ID = ? AND EVENT_ID = ?',1),[tenantId,event.event_id]);
     if (existing[0]) return { accepted:true, duplicate:true, event_id:event.event_id, event_hash:existing[0].EVENT_HASH };
     await tx.execute(`INSERT INTO LEGAL_EVENT_LOG
       (TENANT_ID, DEVICE_ID, EVENT_ID, EVENT_TYPE, ACAO, CORRELATION_ID, CLIENT_TIMESTAMP, EVENT_HASH, PAYLOAD_HASH, RESULTADO, METADATA)
@@ -34,9 +35,9 @@ exports.ingest = async (tenantId, event, correlationId) => {
     const lat=Number(event.location?.latitude), lon=Number(event.location?.longitude);
     const hasLocation=Number.isFinite(lat)&&Number.isFinite(lon)&&lat>=-90&&lat<=90&&lon>=-180&&lon<=180;
     if(hasLocation){
-      await tx.execute(`UPDATE INTEGRATION_DEVICE SET LAST_SEEN=CURRENT_TIMESTAMP,LAST_LATITUDE=?,LAST_LONGITUDE=?,LOCATION_UPDATED_AT=CURRENT_TIMESTAMP WHERE TENANT_ID=? AND DEVICE_ID=?`,[lat,lon,tenantId,event.device_id]);
+      await tx.execute(`UPDATE INTEGRATION_DEVICE SET LAST_SEEN=${db.dialect().currentTimestamp},LAST_LATITUDE=?,LAST_LONGITUDE=?,LOCATION_UPDATED_AT=${db.dialect().currentTimestamp} WHERE TENANT_ID=? AND DEVICE_ID=?`,[lat,lon,tenantId,event.device_id]);
     } else {
-      await tx.execute(`UPDATE INTEGRATION_DEVICE SET LAST_SEEN=CURRENT_TIMESTAMP WHERE TENANT_ID=? AND DEVICE_ID=?`,[tenantId,event.device_id]);
+      await tx.execute(`UPDATE INTEGRATION_DEVICE SET LAST_SEEN=${db.dialect().currentTimestamp} WHERE TENANT_ID=? AND DEVICE_ID=?`,[tenantId,event.device_id]);
     }
     await syncRepository.insertStagingTx(tx,{event_id:event.event_id,empresa_id:tenantId,tabela:event.operation,chave:event.sequence==null?event.event_id:String(event.sequence),operacao:'U',dados:event.payload??null,hash_unico:eventHash});
     return {accepted:true,duplicate:false,event_id:event.event_id,event_hash:eventHash};
