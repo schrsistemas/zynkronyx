@@ -10,3 +10,5 @@ enabled = true
 
 [vars]
 APP_NAME = "Zynkronyx"
+
+# Set BACKEND_URL with `wrangler secret put BACKEND_URL` for the deployed Node/Express API.
