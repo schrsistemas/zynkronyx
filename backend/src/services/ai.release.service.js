@@ -1,4 +1,5 @@
 const db=require('./db.service');
+const prompts=require('./ai.prompt.service');
 
 function hashBucket(value){
   const input=String(value||'');
@@ -8,6 +9,10 @@ function hashBucket(value){
 }
 
 async function create(input){
+  const candidate=await prompts.getById(input.tenantId,Number(input.promptVersionId));
+  if(Number(candidate.TENANT_ID)!==Number(input.tenantId)){const e=new Error('AI_RELEASE_PROMPT_TENANT_MISMATCH');e.status=409;throw e;}
+  if(String(candidate.STATUS)==='ACTIVE'){const e=new Error('AI_RELEASE_CANDIDATE_ALREADY_ACTIVE');e.status=409;throw e;}
+  const gate=await prompts.promotionGate(input.tenantId,Number(input.promptVersionId));
   const id=await db.nextId('AI_PROMPT_RELEASE');
   const mode=String(input.mode||process.env.AI_CANARY_MODE||'TENANT_CANARY').trim().toUpperCase();
   const traffic=Math.min(Math.max(Number(input.trafficPercent??10),0),100);
@@ -15,7 +20,7 @@ async function create(input){
     'INSERT INTO AI_PROMPT_RELEASE (ID,TENANT_ID,PROMPT_VERSION_ID,BASELINE_VERSION_ID,MODE,STATUS,TRAFFIC_PERCENT,MIN_SCORE) VALUES (?,?,?,?,?,?,?,?)',
     [id,input.tenantId,input.promptVersionId,input.baselineVersionId||null,mode,'RUNNING',traffic,input.minScore??Number(process.env.AI_PROMOTION_MIN_SCORE||0.8)]
   );
-  return id;
+  return {id,gate};
 }
 
 async function list(tenantId){
