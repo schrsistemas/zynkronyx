@@ -3,7 +3,7 @@ const db=require('./db.service');
 async function nextId(resource){return db.nextId(resource);}
 const now=()=>db.dialect().currentTimestamp;
 
-exports.listLeads=async(tenantId,limit=50)=>db.query('SELECT ID,EXTERNAL_KEY,NAME,EMAIL,COMPANY,SOURCE,STATUS,FIT_SCORE,INTENT_SCORE,PRIORITY_SCORE,LAST_CONTACT_AT,CREATED_AT,UPDATED_AT FROM SALES_LEAD WHERE TENANT_ID=? ORDER BY PRIORITY_SCORE DESC,CREATED_AT DESC',[tenantId]);
+exports.listLeads=async(tenantId,limit=50)=>db.query(db.dialect().limit('SELECT ID,EXTERNAL_KEY,NAME,EMAIL,COMPANY,SOURCE,STATUS,FIT_SCORE,INTENT_SCORE,PRIORITY_SCORE,LAST_CONTACT_AT,CREATED_AT,UPDATED_AT FROM SALES_LEAD WHERE TENANT_ID=? ORDER BY PRIORITY_SCORE DESC,CREATED_AT DESC',Math.min(Math.max(Number(limit)||50,1),100)),[tenantId]);
 
 exports.getLead=async(tenantId,id)=>{const rows=await db.query('SELECT * FROM SALES_LEAD WHERE TENANT_ID=? AND ID=?',[tenantId,id]);return rows[0]||null;};
 exports.findLeadByKey=async(tenantId,key)=>{const rows=await db.query('SELECT * FROM SALES_LEAD WHERE TENANT_ID=? AND EXTERNAL_KEY=?',[tenantId,key]);return rows[0]||null;};
