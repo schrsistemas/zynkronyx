@@ -3,6 +3,10 @@ const repo=require('./sales.repository');
 const audit=require('./security.audit.service');
 const rag=require('./rag.service');
 
+function normalizeText(value){return String(value||'').trim().replace(/\\s+/g,' ');}
+function normalizeEmail(value){return normalizeText(value).toLowerCase();}
+function normalizeCompany(value){return normalizeText(value).toLowerCase().replace(/[^a-z0-9\\u00c0-\\u024f]+/gi,' ');}
+function normalizeLead(input={}){return {name:normalizeText(input.name),email:normalizeEmail(input.email),company:normalizeCompany(input.company),source:normalizeText(input.source),metadata:input.metadata};}
 function clamp(v){return Math.min(Math.max(Number(v)||0,0),1);}
 function scoreLead(input){
   const fit=clamp(input.fit_score);
@@ -12,17 +16,19 @@ function scoreLead(input){
 }
 
 exports.scoreLead=scoreLead;
+exports.normalizeLead=normalizeLead;
 
 exports.listLeads=(tenantId,limit)=>repo.listLeads(tenantId,Math.min(Math.max(Number(limit)||50,1),100));
 exports.getLead=(tenantId,id)=>repo.getLead(tenantId,Number(id));
 
 exports.createLead=async(req,input)=>{
   const tenantId=req.tenant.id;
-  const externalKey=String(input.external_key||input.externalKey||crypto.createHash('sha256').update([input.email,input.company,input.name].map(x=>String(x||'').trim().toLowerCase()).join('|')).digest('hex'));
+  const normalized=normalizeLead(input);
+  const externalKey=String(input.external_key||input.externalKey||crypto.createHash('sha256').update([normalized.email,normalized.company,normalized.name].join('|')).digest('hex'));
   const existing=await repo.findLeadByKey(tenantId,externalKey);
   if(existing){return {lead:existing,idempotent:true};}
-  if(!String(input.name||'').trim()){const e=new Error('LEAD_NAME_REQUIRED');e.status=400;throw e;}
-  const lead=await repo.insertLead({tenantId,externalKey,name:String(input.name).trim(),email:input.email,company:input.company,source:input.source,metadata:input.metadata});
+  if(!normalized.name){const e=new Error('LEAD_NAME_REQUIRED');e.status=400;throw e;}
+  const lead=await repo.insertLead({tenantId,externalKey,name:normalized.name,email:normalized.email||null,company:normalized.company||null,source:normalized.source||null,metadata:normalized.metadata});
   await audit.record({tenantId,action:'SALES_LEAD_CREATED',result:'ALLOWED',correlationId:req.correlationId,metadata:{lead_id:lead.ID,external_key:externalKey}});
   return {lead,idempotent:false};
 };
