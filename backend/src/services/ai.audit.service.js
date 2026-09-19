@@ -22,4 +22,5 @@ async function recent(tenantId,limit=20){
   return db.query(sql,[tenantId]);
 }
 
-module.exports={record,recent};
+async function feedback(i={}){if(!i.tenantId||!i.auditId)return null;const auditRows=await db.query('SELECT ID FROM AI_QUERY_AUDIT WHERE ID=? AND TENANT_ID=?',[Number(i.auditId),i.tenantId]);if(!auditRows[0]){const e=new Error('AI_AUDIT_NOT_FOUND');e.status=404;throw e;}const id=await db.nextId('AI_QUERY_FEEDBACK');await db.execute('INSERT INTO AI_QUERY_FEEDBACK (ID,TENANT_ID,AUDIT_ID,FEEDBACK_TYPE,LABEL,RATING,COMMENT_TEXT,CREATED_BY) VALUES (?,?,?,?,?,?,?,?)',[id,i.tenantId,Number(i.auditId),i.feedbackType||'HUMAN',i.label||null,i.rating==null?null:Number(i.rating),i.comment||null,i.createdBy||null]);return id;}
+module.exports={record,recent,feedback};
