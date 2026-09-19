@@ -12,7 +12,7 @@ function loadService(){
     withTransaction:async work=>work({
       nextId:async()=>++state.nextId,
       query:async(sql,params)=>{
-        if(sql.includes('AI_QUERY_AUDIT'))return params[0]===10&&params[1]===7?[{ID:10}]:[];
+        if(sql.includes('AI_QUERY_AUDIT'))return params[1]===7&&[10,11].includes(Number(params[0]))?[{ID:Number(params[0])}]:[];
         if(sql.includes('IDEMPOTENCY_KEY'))return state.feedback.filter(x=>x.TENANT_ID===params[0]&&x.IDEMPOTENCY_KEY===params[1]).map(x=>({...x}));
         return [];
       },
@@ -46,7 +46,7 @@ test('feedback is idempotent per tenant and audit',async()=>{
 test('same feedback idempotency key cannot target another audit',async()=>{
   const {service}=loadService();
   await service.feedback({tenantId:7,auditId:10,idempotencyKey:'fb-1'});
-  await assert.rejects(()=>service.feedback({tenantId:7,auditId:11,idempotencyKey:'fb-1'}),/AI_AUDIT_NOT_FOUND/);
+  await assert.rejects(()=>service.feedback({tenantId:7,auditId:11,idempotencyKey:'fb-1'}),/AI_FEEDBACK_IDEMPOTENCY_CONFLICT/);
 });
 
 test('feedback without idempotency key remains repeatable',async()=>{
