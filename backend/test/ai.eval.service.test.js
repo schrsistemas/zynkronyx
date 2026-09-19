@@ -1,0 +1,2 @@
+const assert=require('node:assert/strict');const test=require('node:test');const evals=require('../src/services/ai.eval.service');
+test('evaluation scoring is deterministic',()=>{assert.equal(evals.scoreOutput('A customer invoice was issued',{contains:'customer invoice'}),1);assert.equal(evals.scoreOutput('invoice',{contains:'customer invoice'}),0.5);});
