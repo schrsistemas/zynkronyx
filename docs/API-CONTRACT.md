@@ -72,10 +72,13 @@ Governance mutations require the configured AI governance authorization.
 - `GET /ai/eval/cases`
 - `POST /ai/eval/run`
 - `GET /ai/audit`
-- `POST /ai/feedback`
+- `POST /ai/feedback`  
+  - accepts optional `Idempotency-Key` header (or `idempotency_key` body field); repeated requests with the same key for the same audit return the existing feedback; reuse of the key for another audit is rejected.  
 - `GET /ai/feedback/summary`
 - `GET /ai/refinement`
-- `POST /ai/refinement`
+- `POST /ai/refinement`  
+  - when `feedback_id` is supplied, the refinement is tenant-linked to that feedback and its audit; `audit_id` may be omitted and is derived from the feedback.  
+  - the base prompt version is retained separately from the generated draft prompt version for lineage.  
 - `POST /ai/refinement/:id/review`
 - `POST /ai/refinement/:id/accept`  
   - accepts optional `Idempotency-Key` header (or `idempotency_key` body field); repeated requests with the same key for the same refinement return the previously created draft instead of creating another one; reuse of the same key for another refinement is rejected.
