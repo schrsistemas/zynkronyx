@@ -10,3 +10,60 @@
 
 .leafletMap{height:520px;margin:10px;border:1px solid #292a30;border-radius:12px;overflow:hidden;background:#0b0d10}.leafletMap .leaflet-control-attribution{font-size:9px}.radarLoading{display:grid;place-items:center;color:#777;font-size:12px}.radarControls{display:flex;gap:10px;align-items:center;padding:10px 14px;border-bottom:1px solid #202126}.radarControls select,.radarControls button{border:1px solid #303138;background:#191a1f;color:#ddd;border-radius:7px;padding:8px 10px;font-size:11px}.radarControls button{cursor:pointer}.radarControls label{color:#888;font-size:11px;display:flex;align-items:center;gap:6px}@media(max-width:600px){.leafletMap{height:400px}.radarControls{flex-wrap:wrap}}
 .integrationGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0 24px}.integrationCard{border:1px solid #24252b;background:#101115;border-radius:13px;padding:16px}.integrationCard strong{display:block;font-size:12px}.integrationCard small,.integrationCard span{display:block;color:#777;font-size:10px;margin-top:7px}.simulatorForm{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:14px}.simulatorForm input,.simulatorForm select,.simulatorForm button{border:1px solid #303138;background:#090a0d;color:#ddd;border-radius:7px;padding:9px 10px;font-size:11px}.simulatorForm textarea{grid-column:1/-1}.simulatorForm button{background:#191a1f;cursor:pointer}.simulatorForm button:disabled{opacity:.5;cursor:wait}@media(max-width:800px){.integrationGrid{grid-template-columns:1fr 1fr}}@media(max-width:600px){.integrationGrid,.simulatorForm{grid-template-columns:1fr}.simulatorForm textarea{grid-column:auto}}
+/* Mobile-first control center */
+html,body,#__next{width:100%;overflow-x:hidden}
+button,input,select,textarea{font:inherit}
+.main{min-width:0}
+@media(max-width:600px){
+  .shell{display:block}
+  .sidebar{position:sticky;top:0;z-index:100;width:100%;height:auto;min-height:0;padding:8px 10px;border-right:0;border-bottom:1px solid #202126;background:#0d0e12}
+  .brand{padding:2px 4px 8px;justify-content:center}
+  .brandMark{width:30px;height:30px}
+  .brand div{display:block}
+  .sidebar nav{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+  .sidebar nav::-webkit-scrollbar{display:none}
+  .sidebar button{flex:0 0 auto;padding:9px 11px;font-size:11px;white-space:nowrap}
+  .sidebar button span{display:inline;margin-left:5px}
+  .sideBottom{display:none}
+  .main{padding:16px 10px 28px;max-width:none}
+  .topbar{align-items:center;margin-bottom:16px;gap:10px}
+  .topbar h1{font-size:21px}
+  .userChip{font-size:9px;padding:6px 8px}
+  .hero{padding:18px;border-radius:14px}
+  .hero h2{font-size:21px;margin:12px 0 6px}
+  .hero p,.lead{font-size:12px}
+  .heroVersion{margin-top:14px;text-align:left}
+  .stats,.serviceGrid,.integrationGrid{grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px}
+  .stat{padding:13px}
+  .stat strong{font-size:19px}
+  .service{padding:13px}
+  .serviceName{margin:11px 0 7px}
+  .architecture{padding:16px;display:grid;grid-template-columns:1fr;gap:9px;text-align:center}
+  .architecture b{display:none}
+  .panel{border-radius:12px}
+  .sectionTitle{margin:16px 0 9px;gap:8px}
+  .sectionTitle h3{font-size:12px}
+  .radarPanel{padding:0}
+  .radarControls{display:grid;grid-template-columns:1fr;gap:8px;padding:10px}
+  .radarControls select,.radarControls button{width:100%;min-height:42px}
+  .radarControls label{min-height:40px;padding:8px}
+  .leafletMap,.radarMap{height:48vh;min-height:300px;max-height:460px;margin:0;border:0;border-radius:0}
+  .radarEmpty{height:48vh;min-height:300px;margin:0;border:0;border-radius:0;padding:28px 20px}
+  .radarLegend{padding:9px 12px 12px}
+  .row,.endpoint{padding:13px 10px}
+  .endpoint{grid-template-columns:45px 1fr;gap:7px}
+  .endpoint .status,.endpoint button{grid-column:2}
+  .deviceForm,.securityForm,.auditFilters,.simulatorForm{grid-template-columns:1fr;padding:10px}
+  .deviceForm button,.securityForm button,.simulatorForm textarea{grid-column:auto;width:100%}
+  .simulatorForm input,.simulatorForm select,.simulatorForm button{min-height:42px}
+  .simulatorForm textarea{min-height:150px}
+  .integrationCard{padding:13px}
+  .auditRow{padding:13px 10px}
+  .emptyState{padding:48px 18px}
+}
+@media(max-width:380px){
+  .stats,.serviceGrid,.integrationGrid{grid-template-columns:1fr}
+  .brand{justify-content:flex-start}
+  .brand div{display:block}
+  .main{padding-left:8px;padding-right:8px}
+}
