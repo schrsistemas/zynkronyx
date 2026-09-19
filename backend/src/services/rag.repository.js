@@ -31,7 +31,7 @@ async function claimNextJob() {
     const job = rows[0];
     if (!job) return null;
     await tx.execute(
-      "UPDATE AI_INGESTION_JOB SET STATUS='RUNNING',STAGE='PROCESSING',STARTED_AT=' + db.dialect().currentTimestamp + ',ERROR_CODE=NULL,ERROR_MESSAGE=NULL WHERE ID=? AND STATUS='QUEUED'",
+      "UPDATE AI_INGESTION_JOB SET STATUS='RUNNING',STAGE='PROCESSING',STARTED_AT=" + db.dialect().currentTimestamp + ",ERROR_CODE=NULL,ERROR_MESSAGE=NULL WHERE ID=? AND STATUS='QUEUED'",
       [job.ID]
     );
     return { ...job, STATUS: 'RUNNING', STAGE: 'PROCESSING' };
