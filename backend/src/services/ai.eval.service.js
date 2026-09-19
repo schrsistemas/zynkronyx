@@ -1,0 +1,7 @@
+const db=require('./db.firebird.service');
+function parseJson(value,fallback={}){if(value==null)return fallback;try{return typeof value==='string'?JSON.parse(value):value;}catch{return fallback;}}
+async function nextId(generator){const r=await db.query('SELECT GEN_ID('+generator+',1) AS ID FROM RDB$DATABASE');return Number(r[0].ID);}
+async function listCases(tenantId){return db.query("SELECT ID,TENANT_ID,NAME,VERSION_NO,INPUT_TEXT,EXPECTED_JSON,ACTIVE,CREATED_AT FROM AI_EVAL_CASE WHERE (TENANT_ID=? OR TENANT_ID IS NULL) AND ACTIVE='S' ORDER BY ID",[tenantId]);}
+function scoreOutput(output,expected){const text=String(output??'').toLowerCase();const expectedText=String(expected?.answer||expected?.contains||'').toLowerCase();if(!expectedText)return null;const terms=expectedText.split(/\s+/).filter(Boolean);if(!terms.length)return null;return terms.filter(t=>text.includes(t)).length/terms.length;}
+async function recordRun(input){const id=await nextId('GEN_AI_EVAL_RUN_ID');await db.execute('INSERT INTO AI_EVAL_RUN (ID,TENANT_ID,EVAL_CASE_ID,MODEL,PROVIDER,SCORE,GROUNDEDNESS_SCORE,LATENCY_MS,DETAILS_JSON) VALUES (?,?,?,?,?,?,?,?,?)',[id,input.tenantId||null,input.evalCaseId,input.model||null,input.provider||null,input.score??null,input.groundednessScore??null,input.latencyMs||null,JSON.stringify(input.details||{})]);return id;}
+module.exports={listCases,scoreOutput,recordRun,parseJson};
