@@ -1,6 +1,7 @@
 const crypto=require('node:crypto');
 const repo=require('./sales.repository');
 const audit=require('./security.audit.service');
+const rag=require('./rag.service');
 
 function clamp(v){return Math.min(Math.max(Number(v)||0,0),1);}
 function scoreLead(input){
@@ -65,8 +66,16 @@ exports.proposeNextAction=async(req,opportunityId)=>{
   else if(activities[0].OUTCOME) reasons.push('última interação possui resultado registrado');
   if(opportunity.STAGE==='PROPOSAL') reasons.push('oportunidade em etapa de proposta');
   if(!reasons.length) reasons.push('revisar próxima interação comercial');
+  let evidence=[];
+  if(String(process.env.RAG_ENABLED||'').toLowerCase()==='true'){
+    try{
+      const retrieval=await rag.retrieve(req,{query:[opportunity.TITLE,opportunity.STAGE,opportunity.STATUS].join(' '),top_k:4,context_max_tokens:1200});
+      evidence=(retrieval.context?.sources||[]).map(s=>({document_id:s.document_id,chunk_id:s.chunk_id,title:s.title}));
+      if(evidence.length) reasons.push('há evidências autorizadas no contexto RAG');
+    }catch(_error){ /* recommendation remains deterministic if RAG is unavailable */ }
+  }
   const confidence=Number(Math.min(0.95,0.55+reasons.length*0.1).toFixed(4));
-  const action=await repo.insertNextAction({tenantId,opportunityId:Number(opportunityId),actionType:opportunity.STAGE==='PROPOSAL'?'FOLLOW_UP':'CONTACT',dueAt:null,rationale:reasons,confidence,source:'AI',requiresApproval:true});
+  const action=await repo.insertNextAction({tenantId,opportunityId:Number(opportunityId),actionType:opportunity.STAGE==='PROPOSAL'?'FOLLOW_UP':'CONTACT',dueAt:null,rationale:{reasons,evidence},confidence,source:evidence.length?'AI_RAG':'AI',requiresApproval:true});
   await audit.record({tenantId,action:'SALES_AI_RECOMMENDATION',result:'PROPOSED',correlationId:req.correlationId,metadata:{opportunity_id:Number(opportunityId),next_action_id:action.ID,confidence,reasons}});
   return action;
 };
