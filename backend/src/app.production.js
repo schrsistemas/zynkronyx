@@ -4,7 +4,7 @@ const correlation = require('./middleware/correlation.middleware');
 const rateLimit = require('./middleware/rateLimit.middleware');
 const tenant = require('./middleware/tenant');
 const auth = require('./middleware/auth.basic');
-const db = require('./services/db.firebird.service');
+const db = require('./db/database');
 const syncRoutes = require('./routes/sync.routes');
 const deviceRoutes = require('./routes/device.routes');
 const adminRoutes = require('./routes/admin.basic');
@@ -20,9 +20,9 @@ app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '1mb' }));
 app.use(rateLimit);
 app.use(correlation);
 
-app.get('/health', (_req,res)=>res.json({status:'ok',service:'zynkronyx',timestamp:new Date().toISOString(),database:process.env.DB_DATABASE?'configured':'not-configured'}));
+app.get('/health', (_req,res)=>res.json({status:'ok',service:'zynkronyx',timestamp:new Date().toISOString(),database:db.driverName(),database_configured:process.env.DB_DATABASE?'configured':'not-configured'}));
 app.get('/ready', async (req,res)=>{
-  try { await db.query('SELECT 1 AS OK FROM RDB$DATABASE'); return res.json({ok:true,status:'ready',checks:{database:true},correlation_id:req.correlationId}); }
+  try { await db.health(); return res.json({ok:true,status:'ready',checks:{database:true},correlation_id:req.correlationId}); }
   catch (error) { logger.warn({err:error,correlationId:req.correlationId},'Readiness database check failed'); return res.status(503).json({ok:false,status:'not_ready',checks:{database:false},error:'DATABASE_UNAVAILABLE',correlation_id:req.correlationId}); }
 });
 
