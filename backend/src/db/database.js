@@ -18,6 +18,8 @@ function getAdapter() {
   return adapter;
 }
 
+function dialect() { return getAdapter().dialect || { limit: (sql,n) => sql.replace(/^SELECT /i, 'SELECT ').replace(/^(SELECT .*?)( FROM )/is, '$1 FROM ') }; }
+
 async function nextId(resource) { return getAdapter().nextId(resource); }
 
 async function health() {
@@ -30,6 +32,7 @@ async function health() {
 module.exports = {
   driverName,
   getAdapter,
+  dialect,
   nextId,
   health,
   query: (...args) => getAdapter().query(...args),
