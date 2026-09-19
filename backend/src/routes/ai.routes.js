@@ -3,6 +3,7 @@ const ai = require('../services/ai.service');
 const audit = require('../services/ai.audit.service');
 const evaluation = require('../services/ai.eval.service');
 const prompts = require('../services/ai.prompt.service');
+const releases = require('../services/ai.release.service');
 const router = express.Router();
 
 router.get('/status', (req, res) => res.json({ ok: true, service: 'zynkronyx-ai', ...ai.status(req) }));
@@ -10,6 +11,10 @@ router.get('/status', (req, res) => res.json({ ok: true, service: 'zynkronyx-ai'
 
 
 
+
+router.get('/releases',async(req,res)=>{try{return res.json({ok:true,correlation_id:req.correlationId,results:await releases.list(req.tenant.id)});}catch(error){return res.status(error.status||500).json({ok:false,error:error.code||error.message||'AI_RELEASES_FAILED',correlation_id:req.correlationId});}});
+router.post('/releases',async(req,res)=>{try{const promptVersionId=Number(req.body?.prompt_version_id);if(!Number.isInteger(promptVersionId)||promptVersionId<1)throw Object.assign(new Error('INVALID_PROMPT_VERSION_ID'),{status:400});const id=await releases.create({tenantId:req.tenant.id,promptVersionId,baselineVersionId:req.body?.baseline_version_id,trafficPercent:req.body?.traffic_percent,mode:'CANARY'});return res.status(201).json({ok:true,id,correlation_id:req.correlationId,status:'RUNNING'});}catch(error){return res.status(error.status||500).json({ok:false,error:error.code||error.message||'AI_RELEASE_CREATE_FAILED',correlation_id:req.correlationId});}});
+router.post('/releases/:id/rollback',async(req,res)=>{try{return res.json({ok:true,correlation_id:req.correlationId,...await releases.finish(req.tenant.id,Number(req.params.id),'ROLLED_BACK',{reason:'manual'})});}catch(error){return res.status(error.status||500).json({ok:false,error:error.code||error.message||'AI_RELEASE_ROLLBACK_FAILED',correlation_id:req.correlationId});}});
 router.get('/prompts',async(req,res)=>{try{return res.json({ok:true,correlation_id:req.correlationId,results:await prompts.list(req.tenant.id)});}catch(error){return res.status(error.status||500).json({ok:false,error:error.code||error.message||'AI_PROMPTS_FAILED',correlation_id:req.correlationId});}});
 router.post('/prompts',async(req,res)=>{try{const version=Number(req.body?.version_no);if(!Number.isInteger(version)||version<1)throw Object.assign(new Error('INVALID_PROMPT_VERSION'),{status:400});const id=await prompts.create({tenantId:req.tenant.id,versionNo:version,name:String(req.body?.name||'prompt'),prompt:req.body?.prompt||{},status:'DRAFT'});return res.status(201).json({ok:true,id,correlation_id:req.correlationId});}catch(error){return res.status(error.status||500).json({ok:false,error:error.code||error.message||'AI_PROMPT_CREATE_FAILED',correlation_id:req.correlationId});}});
 router.post('/prompts/:id/promote',async(req,res)=>{try{const gate=await prompts.promotionGate(req.tenant.id,Number(req.params.id));return res.json({ok:true,correlation_id:req.correlationId,gate,...await prompts.promote(req.tenant.id,Number(req.params.id))});}catch(error){return res.status(error.status||500).json({ok:false,error:error.code||error.message||'AI_PROMPT_PROMOTE_FAILED',correlation_id:req.correlationId});}});
