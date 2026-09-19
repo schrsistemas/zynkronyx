@@ -7,17 +7,13 @@ on:
 jobs:
   docker-test:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
-
       - name: Build image
         run: docker build -f Dockerfile.prod -t zynkronyx:test .
-
       - name: Run container
         run: |
-          docker run -d -p 3000:3000 --name ztest zynkronyx:test
-
+          docker run -d -p 3000:3000 --name ztest             -e AUTH_LOGIN=ci             -e AUTH_PASSWORD=ci-password-123             -e AUTH_TOKEN=ci-token-0123456789-0123456789-012345             zynkronyx:test
       - name: Wait for API (retry)
         run: |
           for i in {1..20}; do
@@ -26,17 +22,15 @@ jobs:
             sleep 2
           done
           echo "API não respondeu" && exit 1
-
       - name: Test endpoints
         run: |
           curl -f http://localhost:3000/health
           curl -f -X POST http://localhost:3000/auth/login -H "Content-Type: application/json" -d '{"login":"ci","password":"ci-password-123"}'
-
       - name: Logs (debug)
         if: failure()
         run: docker logs ztest
-
       - name: Cleanup
+        if: always()
         run: |
           docker stop ztest || true
           docker rm ztest || true
