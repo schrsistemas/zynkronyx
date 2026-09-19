@@ -10,3 +10,6 @@ test('chunks deterministically and hashes each chunk', () => {
   assert.deepEqual(first, second); assert.ok(first.length > 1); assert.equal(first[0].hash, hash(first[0].content)); assert.equal(first[0].index, 0);
 });
 test('empty content produces no chunks', () => assert.deepEqual(chunkText('   '), []));
+
+
+test('preview and retrieval contracts are exposed by RAG service',()=>{const rag=require('../src/services/rag.service');assert.equal(typeof rag.preview,'function');assert.equal(typeof rag.retrieve,'function');});
