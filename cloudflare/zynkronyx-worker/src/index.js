@@ -1,4 +1,4 @@
-const VERSION = "0.4.0";
+const VERSION = "0.3.4";
 
 const ALLOWED_ORIGINS = new Set([
   "https://zynkronyx-control-center.pages.dev",
