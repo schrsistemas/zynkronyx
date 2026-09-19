@@ -15,6 +15,7 @@ const aiRoutes = require('./routes/ai.routes');
 
 const app = express();
 app.disable('x-powered-by');
+app.use((req,res,next)=>{res.setHeader('x-content-type-options','nosniff');res.setHeader('x-frame-options','DENY');res.setHeader('referrer-policy','no-referrer');res.setHeader('permissions-policy','camera=(),microphone=(),geolocation=()');next();});
 app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '1mb' }));
 app.use(rateLimit);
 app.use(correlation);
@@ -28,7 +29,7 @@ app.get('/ready', async (req,res)=>{
 app.use('/auth',authRoutes); app.use(tenant);
 app.use('/sync',auth,syncRoutes); app.use('/integration',auth,deviceRoutes); app.use('/integration/devices',auth,deviceRegistryRoutes);
 app.use('/audit',auth,auditRoutes); app.use('/ai',auth,aiRoutes); app.use('/admin',auth,adminRoutes);
-app.get('/metrics',(_req,res)=>res.type('text/plain').send('metrics ok'));
+app.get('/metrics',(req,res)=>res.type('text/plain').send(['zynkronyx_requests_info 1','zynkronyx_ready '+(process.env.DB_DATABASE?'1':'0')].join('\n')+'\n'));
 app.use((req,res)=>res.status(404).json({erro:'Rota nao encontrada',correlation_id:req.correlationId}));
 app.use((err,req,res,next)=>{ logger.error({err,path:req.path,correlationId:req.correlationId,tenantId:req.tenant?.id},'Unhandled request error'); res.status(err.status||500).json({erro:err.message||'Erro interno',correlation_id:req.correlationId}); });
 function start(){const PORT=Number(process.env.PORT||3000); const server=app.listen(PORT,()=>logger.info({port:PORT},'API PROD rodando')); if(process.env.SYNC_PROCESSOR_ENABLED==='true') require('./processor/runner')(); return server;}
