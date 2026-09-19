@@ -39,7 +39,7 @@ async function proxy(request, env, path) {
   try {
     const response = await fetch(new Request(target,{method:request.method,headers,body:request.method==="GET"||request.method==="HEAD"?undefined:request.body,redirect:"follow"}),{signal:AbortSignal.timeout(15000)});
     const responseHeaders = new Headers(response.headers);
-    for (const [key,value] of Object.entries(PUBLIC_HEADERS)) responseHeaders.set(key,value);
+    for (const [key,value] of Object.entries(publicHeaders(request))) responseHeaders.set(key,value);
     return new Response(response.body,{status:response.status,statusText:response.statusText,headers:responseHeaders});
   } catch(error) {
     return json({ok:false,error:"BACKEND_UNREACHABLE",message:"O backend Node/Express nao respondeu pelo gateway.",detail:error?.message||"fetch failed",timestamp:now()},502,request);

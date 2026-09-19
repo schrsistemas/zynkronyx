@@ -12,7 +12,7 @@ function headers() {
 
 export default function IntegrationsCenter() {
   const [form,setForm] = useState({
-    device_id:"", device_type:"simulator", operation:"TEST_EVENT", sequence:1,
+    device_id:"", device_type:"simulator", protocol_version:1, operation:"TEST_EVENT", sequence:1,
     correlation_id:"", latitude:"", longitude:"",
     payload:JSON.stringify({source:"zynkronyx-simulator",message:"integration test"},null,2)
   });
@@ -67,7 +67,7 @@ export default function IntegrationsCenter() {
       <form className="simulatorForm" onSubmit={send}>
         <input value={form.device_id} onChange={e=>set("device_id",e.target.value)} placeholder="device_id registrado" required/>
         <input value={credential} onChange={e=>setCredential(e.target.value)} placeholder="device credential" type="password" required/>
-        <select value={form.device_type} onChange={e=>set("device_type",e.target.value)}>{TYPES.map(x=><option key={x}>{x}</option>)}</select>
+        <select value={form.device_type} onChange={e=>set("device_type",e.target.value)}>{TYPES.map(x=><option key={x}>{x}</option>)}</select>\n        <input value={form.protocol_version} onChange={e=>set("protocol_version",e.target.value)} type="number" min="1" placeholder="protocol version"/>
         <input value={form.operation} onChange={e=>set("operation",e.target.value)} placeholder="operation" required/>
         <input value={form.sequence} onChange={e=>set("sequence",e.target.value)} type="number" min="1" placeholder="sequence"/>
         <input value={form.correlation_id} onChange={e=>set("correlation_id",e.target.value)} placeholder="correlation_id (opcional)"/>
