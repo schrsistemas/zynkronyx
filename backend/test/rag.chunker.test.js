@@ -13,3 +13,6 @@ test('empty content produces no chunks', () => assert.deepEqual(chunkText('   ')
 
 
 test('preview and retrieval contracts are exposed by RAG service',()=>{const rag=require('../src/services/rag.service');assert.equal(typeof rag.preview,'function');assert.equal(typeof rag.retrieve,'function');});
+
+
+test('reranks and bounds retrieval context',()=>{const rag=require('../src/services/rag.service');const results=rag.rerank([{chunk_id:1,content:'Firebird invoice customer',score:1},{chunk_id:2,content:'unrelated',score:0}],'invoice customer',2);assert.equal(results[0].chunk_id,1);const ctx=rag.assembleContext(results,5);assert.ok(ctx.estimated_tokens<=5);});
