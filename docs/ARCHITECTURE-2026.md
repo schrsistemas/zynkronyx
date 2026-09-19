@@ -2,12 +2,12 @@
 
 ## Objetivo
 
-Evoluir o Zynkronyx de uma API de sincronização para uma plataforma operacional observável, segura e extensível, preservando o contrato da API, o Firebird do ERP e o baixo acoplamento entre domínio, infraestrutura e IA.
+Evoluir o Zynkronyx de uma API de sincronização para uma plataforma operacional observável, segura e extensível, preservando o contrato da API, o SGBD transacional configurado pelo deployment e o baixo acoplamento entre domínio, infraestrutura e IA.
 
 ## Arquitetura lógica
 
 ```
-Delphi/ERP + Firebird
+Delphi/ERP + SGBD transacional
         |
         | sync / eventos / auditoria
         v
@@ -28,7 +28,7 @@ Node/Express API         AI Gateway
                        |
              +---------+---------+
              |                   |
-          Firebird          Event/Outbox
+       Transactional DB     Event/Outbox
              |                   |
              +---------+---------+
                        v
@@ -44,6 +44,7 @@ Node/Express API         AI Gateway
 4. **Infrastructure** — Firebird/FireDAC, filas/outbox, armazenamento documental e provedores externos.
 5. **AI platform** — ingestão, chunking, embeddings, retrieval, reranking, prompt assembly, LLM, guardrails e avaliação.
 6. **Observability** — logs estruturados, métricas, tracing, auditoria, SLOs e alertas.
+7. **Experience** — Control Center mobile-first; telas, tabelas, formulários e mapas devem funcionar primeiro em telas estreitas e touch, com desktop como progressive enhancement.
 
 ## RAG + LLM
 
@@ -127,7 +128,7 @@ Não usar feedback de produção diretamente para treinar ou alterar comportamen
 
 ## Dados e consistência
 
-Firebird continua sendo o sistema transacional do ERP.
+O SGBD transacional configurado pelo deployment continua sendo o sistema de verdade do ERP. Firebird é uma implementação atualmente suportada, não uma dependência arquitetural.
 
 Para integração:
 
@@ -173,7 +174,7 @@ Métricas mínimas:
 - throughput;
 - filas/outbox pendentes;
 - conflitos de sincronização;
-- latência do Firebird;
+- latência do SGBD transacional;
 - cache hit;
 - tokens/custo de IA;
 - retrieval hit rate;
