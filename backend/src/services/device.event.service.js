@@ -1,5 +1,5 @@
 const crypto = require('node:crypto');
-const db = require('./db.firebird.service');
+const db = require('./db.service');
 const syncRepository = require('../repository/sync.repository');
 
 const ALLOWED_TYPES = new Set(['arduino', 'raspberry-pi', 'pic', 'android', 'ios', 'delphi', 'simulator']);
