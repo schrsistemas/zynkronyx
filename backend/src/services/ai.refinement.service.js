@@ -47,12 +47,21 @@ async function review(tenantId,id,input={}){
   return updated;
 }
 async function accept(tenantId,id,input={}){
+  const idempotencyKey=clean(input.idempotencyKey,150)||null;
   return db.withTransaction(async tx=>{
     const lockSql=db.dialect().lock('SELECT ID,TENANT_ID,AUDIT_ID,PROMPT_VERSION_ID,FEEDBACK_ID,TYPE,SOURCE,TITLE,PROPOSED_CHANGE_JSON,STATUS,CREATED_BY,REVIEWED_BY,CREATED_AT,REVIEWED_AT FROM AI_REFINEMENT_ITEM WHERE ID=? AND TENANT_ID=?');
     const rows=await tx.query(lockSql,[Number(id),tenantId]);
     const item=rows[0];
     if(!item)throw notFound('AI_REFINEMENT_NOT_FOUND');
+    if(String(item.STATUS)==='ACCEPTED'){
+      if(idempotencyKey&&String(item.ACCEPT_IDEMPOTENCY_KEY||'')===idempotencyKey)return {refinement:item,draft_prompt_id:Number(item.PROMPT_VERSION_ID),base_prompt_id:null,next_version:null,idempotent:true};
+      throw notFound('AI_REFINEMENT_NOT_ACCEPTABLE',409);
+    }
     if(String(item.STATUS)!=='REVIEWED')throw notFound('AI_REFINEMENT_NOT_ACCEPTABLE',409);
+    if(idempotencyKey){
+      const existing=await tx.query('SELECT ID,PROMPT_VERSION_ID,STATUS,ACCEPT_IDEMPOTENCY_KEY FROM AI_REFINEMENT_ITEM WHERE TENANT_ID=? AND ACCEPT_IDEMPOTENCY_KEY=?',[tenantId,idempotencyKey]);
+      if(existing[0]&&Number(existing[0].ID)!==Number(id))throw notFound('AI_REFINEMENT_IDEMPOTENCY_CONFLICT',409);
+    }
     const proposal=parseJson(item.PROPOSED_CHANGE_JSON,{});
     const base=item.PROMPT_VERSION_ID==null?await prompts.resolveTx(tx,tenantId):await prompts.resolveByIdTx(tx,tenantId,Number(item.PROMPT_VERSION_ID));
     if(!base)throw notFound('AI_REFINEMENT_BASE_PROMPT_NOT_FOUND',409);
@@ -61,8 +70,8 @@ async function accept(tenantId,id,input={}){
     const patch=proposal.suggested_change&&typeof proposal.suggested_change==='object'?proposal.suggested_change:{};
     const draftPrompt={...basePrompt,...patch};
     const promptId=await prompts.createTx(tx,{tenantId,versionNo:nextVersion,name:clean(input.name||('Refinement '+nextVersion),150),prompt:draftPrompt,status:'DRAFT'});
-    await tx.execute("UPDATE AI_REFINEMENT_ITEM SET STATUS='ACCEPTED',PROMPT_VERSION_ID=?,REVIEWED_BY=?,REVIEWED_AT=CURRENT_TIMESTAMP WHERE ID=? AND TENANT_ID=? AND STATUS='REVIEWED'",[promptId,clean(input.reviewedBy,150)||null,Number(id),tenantId]);
-    const refinementRows=await tx.query('SELECT ID,TENANT_ID,AUDIT_ID,PROMPT_VERSION_ID,FEEDBACK_ID,TYPE,SOURCE,TITLE,PROPOSED_CHANGE_JSON,STATUS,CREATED_BY,REVIEWED_BY,CREATED_AT,REVIEWED_AT FROM AI_REFINEMENT_ITEM WHERE ID=? AND TENANT_ID=?',[Number(id),tenantId]);
+    await tx.execute("UPDATE AI_REFINEMENT_ITEM SET STATUS='ACCEPTED',PROMPT_VERSION_ID=?,ACCEPT_IDEMPOTENCY_KEY=?,REVIEWED_BY=?,REVIEWED_AT=CURRENT_TIMESTAMP WHERE ID=? AND TENANT_ID=? AND STATUS='REVIEWED'",[promptId,idempotencyKey,clean(input.reviewedBy,150)||null,Number(id),tenantId]);
+    const refinementRows=await tx.query('SELECT ID,TENANT_ID,AUDIT_ID,PROMPT_VERSION_ID,FEEDBACK_ID,TYPE,SOURCE,TITLE,PROPOSED_CHANGE_JSON,STATUS,ACCEPT_IDEMPOTENCY_KEY,CREATED_BY,REVIEWED_BY,CREATED_AT,REVIEWED_AT FROM AI_REFINEMENT_ITEM WHERE ID=? AND TENANT_ID=?',[Number(id),tenantId]);
     return {refinement:refinementRows[0],draft_prompt_id:promptId,base_prompt_id:Number(base.ID),next_version:nextVersion};
   });
 }
