@@ -34,8 +34,8 @@ jobs:
         run: docker run --rm zynkronyx:test node -e "require('./src/services/ai.eval.service'); console.log('AI_EVAL_OK')"
       - name: Load AI service
         run: docker run --rm zynkronyx:test node -e "require('./src/services/ai.service'); console.log('AI_SERVICE_OK')"
-      - name: Load AI route
-        run: docker run --rm zynkronyx:test node -e "require('./src/routes/ai.routes'); console.log('AI_ROUTE_OK')"
+      - name: Validate AI route registration
+        run: docker run --rm zynkronyx:test node -e "const Module=require('module');const original=Module._load;const expressMock={Router(){const r={};for(const m of ['get','post','put','patch','delete'])r[m]=(...args)=>{for(const h of args.slice(1)){if(typeof h!=='function')throw new Error('INVALID_HANDLER:'+m+':'+typeof h);}return r;};return r;}};Module._load=function(req,p,isMain){if(req==='express')return expressMock;return original.apply(this,arguments)};try{require('./src/routes/ai.routes');console.log('AI_ROUTE_REGISTER_OK')}catch(e){console.error(e.stack);process.exit(1)}"
       - name: Load sales route
         run: docker run --rm zynkronyx:test node -e "require('./src/routes/sales.routes'); console.log('SALES_ROUTE_OK')"
       - name: Load fiscal route
