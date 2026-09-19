@@ -2,6 +2,7 @@ const VERSION = "0.3.2";
 
 const ALLOWED_ORIGINS = new Set([
   "https://zynkronyx-control-center.pages.dev",
+  "https://x-control-center.pages.dev",
   "http://localhost:3000",
   "http://127.0.0.1:3000",
 ]);
