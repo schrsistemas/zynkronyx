@@ -5,7 +5,7 @@ const Module=require('node:module');
 function load(rows,canaryStatus){
   const original=Module._load;
   const db={
-    query:async(sql)=>sql.includes('AI_PROMPT_RELEASE')?(canaryStatus?[{ID:41,STATUS:canaryStatus}]:[]):sql.includes('AI_PROMPT_VERSION')?[{ID:9,TENANT_ID:7,VERSION_NO:4,STATUS:'DRAFT'}]:[],
+    query:async(sql)=>sql.includes('AI_PROMPT_RELEASE')?(canaryStatus?[{ID:41,STATUS:canaryStatus}]:[]):sql.includes('AI_PROMPT_VERSION')?[{ID:9,TENANT_ID:7,VERSION_NO:4,STATUS:'DRAFT'}]:sql.includes('AI_EVAL_RUN')?[{SCORE:.9,PROMPT_VERSION_ID:9},{SCORE:.9,PROMPT_VERSION_ID:9},{SCORE:.9,PROMPT_VERSION_ID:9},{SCORE:.8,PROMPT_VERSION_ID:8}]:[],
     dialect:()=>({currentTimestamp:'CURRENT_TIMESTAMP'})
   };
   const prompts={
