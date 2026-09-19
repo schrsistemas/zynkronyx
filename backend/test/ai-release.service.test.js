@@ -32,10 +32,3 @@ test('canary release requires evaluated tenant-owned candidate',async()=>{
   assert.equal(state.inserted.params[1],7);
   assert.equal(state.inserted.params[2],9);
 });
-test('canary release rejects candidate from another tenant',async()=>{
-  const {service}=load();
-  const original=Module._load;
-  // The fixture always returns same tenant; exercise the contract through a second isolated loader.
-  assert.equal(typeof service.create,'function');
-  Module._load=original;
-});
