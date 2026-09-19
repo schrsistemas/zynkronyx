@@ -27,10 +27,21 @@ async function list(tenantId){
   return db.query('SELECT ID,PROMPT_VERSION_ID,BASELINE_VERSION_ID,MODE,STATUS,TRAFFIC_PERCENT,MIN_SCORE,STARTED_AT,FINISHED_AT,RESULT_JSON FROM AI_PROMPT_RELEASE WHERE TENANT_ID=? ORDER BY STARTED_AT DESC,ID DESC',[tenantId]);
 }
 
-async function finish(tenantId,id,status,result){
+async function finish(tenantId,id,status,result={}){
+  const normalized=String(status||'').trim().toUpperCase();
+  if(!['PASSED','FAILED','ROLLED_BACK'].includes(normalized)){const e=new Error('INVALID_RELEASE_STATUS');e.status=400;throw e;}
+  const row=(await db.query('SELECT ID,PROMPT_VERSION_ID,BASELINE_VERSION_ID,STATUS FROM AI_PROMPT_RELEASE WHERE ID=? AND TENANT_ID=?',[Number(id),tenantId]))[0];
+  if(!row){const e=new Error('AI_RELEASE_NOT_FOUND');e.status=404;throw e;}
+  if(String(row.STATUS).toUpperCase()!=='RUNNING'){const e=new Error('AI_RELEASE_ALREADY_FINISHED');e.status=409;throw e;}
   const timestamp=db.dialect().currentTimestamp;
-  await db.execute('UPDATE AI_PROMPT_RELEASE SET STATUS=?,FINISHED_AT='+timestamp+',RESULT_JSON=? WHERE ID=? AND TENANT_ID=?',[status,JSON.stringify(result||{}),id,tenantId]);
-  return{status,id};
+  await db.withTransaction(async tx=>{
+    await tx.execute('UPDATE AI_PROMPT_RELEASE SET STATUS=?,FINISHED_AT='+timestamp+',RESULT_JSON=? WHERE ID=? AND TENANT_ID=? AND STATUS=\'RUNNING\'',[normalized,JSON.stringify(result||{}),Number(id),tenantId]);
+    if(normalized==='ROLLED_BACK'){
+      const auditId=await tx.nextId('AI_PROMPT_PROMOTION_AUDIT');
+      await tx.execute('INSERT INTO AI_PROMPT_PROMOTION_AUDIT (ID,TENANT_ID,PROMPT_VERSION_ID,BASELINE_VERSION_ID,RELEASE_ID,CANARY_STATUS,DECISION,DECIDED_BY,CORRELATION_ID,REASON,DETAILS_JSON) VALUES (?,?,?,?,?,?,?,?,?,?,?)',[auditId,tenantId,Number(row.PROMPT_VERSION_ID),row.BASELINE_VERSION_ID?Number(row.BASELINE_VERSION_ID):null,Number(id),normalized,'ROLLED_BACK',result?.reviewed_by||null,result?.correlation_id||null,result?.reason||'canary rollback',JSON.stringify(result||{})]);
+    }
+  });
+  return{status:normalized,id:Number(id)};
 }
 
 function selectPromptVersion({tenantId,stableId,requestKey=null,mode='TENANT_CANARY',trafficPercent=0,candidateId}={}) {
