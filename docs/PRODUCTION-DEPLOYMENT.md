@@ -45,3 +45,10 @@ Required secrets/environment variables:
 `POST /auth/login` validates the configured login/password and returns the configured bearer token. Protected routes compare the bearer token with a constant-time comparison. Missing production secrets produce a configuration error instead of silently accepting a mock token.
 
 The Control Center must obtain the token through the authenticated login flow; `mock-token` and `x-api-key: demo` are preview-only values and must not be used as production credentials.
+
+
+## AI Sales runtime configuration
+
+For the sales approval boundary, configure `SALES_APPROVAL_USERS` with the authenticated user IDs permitted to approve mutable commercial actions. Leave it unset in environments where approval is intentionally disabled; the approval endpoint then fails closed with `SALES_APPROVAL_NOT_CONFIGURED`.
+
+Sales recommendations can use RAG evidence when `RAG_ENABLED=true`. RAG failure does not authorize a CRM mutation; the recommendation remains derived and requires human approval.
