@@ -32,3 +32,13 @@ test('canary release requires evaluated tenant-owned candidate',async()=>{
   assert.equal(state.inserted.params[1],7);
   assert.equal(state.inserted.params[2],9);
 });
+
+
+test('canary completion persists PASSED status and result',async()=>{
+  const {service,state}=load();
+  const result=await service.finish(7,55,'PASSED',{candidate_score:.91});
+  assert.equal(result.status,'PASSED');
+  assert.equal(result.id,55);
+  assert.equal(state.inserted.params[0],'PASSED');
+  assert.equal(JSON.parse(state.inserted.params[1]).candidate_score,.91);
+});
