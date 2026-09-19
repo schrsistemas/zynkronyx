@@ -57,6 +57,8 @@ const dialect = {
   name: 'firebird',
   limit: (sql, n) => sql.replace(/^SELECT /i, 'SELECT FIRST ' + Number(n) + ' '),
   currentTimestamp: 'CURRENT_TIMESTAMP',
+  beforeNow: (column, seconds) => `${column} < DATEADD(-${Number(seconds)} SECOND TO CURRENT_TIMESTAMP)`,
+  returning: (sql, columns) => sql + ' RETURNING ' + columns,
   contains: (column, placeholder) => `UPPER(${column}) CONTAINING ${placeholder}`,
   lock: (sql) => sql + ' WITH LOCK'
 };
