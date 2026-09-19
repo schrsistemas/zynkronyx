@@ -37,7 +37,7 @@ jobs:
       - name: Smoke test root version
         run: |
           curl --fail --silent --show-error --retry 5 --retry-delay 2 \
-            https://mute-grass-9428.schrsistemas.workers.dev/health | grep '"version": "0.3.1"'
+            https://mute-grass-9428.schrsistemas.workers.dev/health | grep '"version": "0.3.2"'
 
       - name: Smoke test CORS preflight
         run: |
