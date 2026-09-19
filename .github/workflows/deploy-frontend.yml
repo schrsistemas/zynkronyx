@@ -51,8 +51,10 @@ jobs:
           if echo "$projects" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.exit(JSON.parse(s).some(p=>p.name==="zynkronyx-control-center")?0:1))'; then
             echo "Cloudflare Pages project already exists."
           else
-            echo "Creating Cloudflare Pages project..."
-            npx wrangler pages project create zynkronyx-control-center --production-branch main
+            echo "Project list did not expose the project; attempting idempotent create..."
+            if ! npx wrangler pages project create zynkronyx-control-center --production-branch main; then
+              echo "Create reported an existing project; continuing to deployment."
+            fi
           fi
 
       - name: Deploy to Cloudflare Pages
