@@ -5,7 +5,7 @@ const Module = require('node:module');
 function loadTenant(queryResult) {
   const original = Module._load;
   Module._load = function(request, parent, isMain) {
-    if (request === '../services/db.firebird.service' && parent?.filename?.endsWith('/middleware/tenant.js')) {
+    if (request === '../services/db.service' && parent?.filename?.endsWith('/middleware/tenant.js')) {
       return { query: async () => queryResult };
     }
     return original.apply(this, arguments);
