@@ -200,6 +200,28 @@ function Radar() {
 }
 
 
+function AIPromotionLineage({authVersion}) {
+ const [prompts,setPrompts]=useState([]),[selected,setSelected]=useState(null),[history,setHistory]=useState([]),[error,setError]=useState(null),[loading,setLoading]=useState(false);
+ const auth=authHeaders();
+ async function load(){setLoading(true);setError(null);try{const r=await fetch(API+"/ai/prompts",{headers:auth,cache:"no-store"});const j=await r.json();if(!r.ok)throw new Error(j.error||j.erro||"Falha ao consultar prompts");setPrompts(j.results||[])}catch(e){setError(e.message)}finally{setLoading(false)}}
+ async function show(id){setSelected(id);setError(null);try{const r=await fetch(API+"/ai/prompts/"+encodeURIComponent(id)+"/promotion-history",{headers:auth,cache:"no-store"});const j=await r.json();if(!r.ok)throw new Error(j.error||j.erro||"Falha ao consultar linhagem");setHistory(j.results||[])}catch(e){setError(e.message);setHistory([])}}
+ useEffect(()=>{load()},[authVersion]);
+ return <div>
+  <div className="panel"><div className="sectionTitle"><h3>Prompt lifecycle</h3><button onClick={load}>{loading?"Atualizando…":"Atualizar"}</button></div><p className="lead">Linhagem persistida: avaliação → baseline → canary → decisão humana → auditoria.</p>
+   {error&&<div className="resultBox">{error}</div>}
+   {!prompts.length&&!loading?<div className="emptyState"><h2>Nenhuma versão de prompt</h2><p>A API não retornou versões para o tenant atual.</p></div>:prompts.map(p=><button className="auditRow" key={p.ID} onClick={()=>show(p.ID)}>
+    <div><strong>v{p.VERSION_NO} · {p.NAME}</strong><small>ID {p.ID} · {p.STATUS} · promovido {p.PROMOTED_AT||"—"}</small></div><span className="status">{p.STATUS}</span>
+   </button>)}
+  </div>
+  {selected&&<div className="panel"><div className="sectionTitle"><h3>Decision lineage · prompt {selected}</h3><button onClick={()=>setSelected(null)}>Fechar</button></div>
+   {!history.length?<div className="emptyState"><h2>Sem decisões registradas</h2><p>Não há eventos de promoção/rollback persistidos.</p></div>:history.map(h=><div className="row" key={h.ID}>
+    <div><strong>{h.DECISION} · release {h.RELEASE_ID||"—"}</strong><small>candidate {h.CANDIDATE_SCORE??"—"} · baseline {h.BASELINE_SCORE??"—"} · delta {h.DELTA??"—"} · evals {h.EVAL_RUN_COUNT}</small><small>{h.DECIDED_AT||"—"} · operador {h.DECIDED_BY||"—"} · correlation {h.CORRELATION_ID||"—"}</small></div>
+    <span className="status">{h.CANARY_STATUS||"—"}</span>
+   </div>)}
+  </div>}
+ </div>;
+}
+
 function AICenter({authVersion}) {
  const [status,setStatus]=useState(null);
  const [query,setQuery]=useState("");
@@ -234,6 +256,7 @@ function AICenter({authVersion}) {
    <Stat title="Model" value={status?.model||"—"} note="configured provider"/>
    <Stat title="Prompt" value={status?.promptVersion||"—"} note="active baseline"/>
   </div>
+  <AIPromotionLineage authVersion={authVersion}/>
   <div className="panel">
    <div className="sectionTitle"><h3>Consulta controlada</h3><span>Tenant + authorization + audit</span></div>
    <form className="securityForm" onSubmit={ask}>
