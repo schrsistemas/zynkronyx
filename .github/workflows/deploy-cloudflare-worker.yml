@@ -2,8 +2,7 @@ name: Deploy Cloudflare Worker
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
     paths:
       - "cloudflare/zynkronyx-worker/**"
       - ".github/workflows/deploy-cloudflare-worker.yml"
@@ -21,7 +20,6 @@ jobs:
     name: Deploy Worker
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -45,10 +43,12 @@ jobs:
           workingDirectory: cloudflare/zynkronyx-worker
           command: deploy
 
-      - name: Smoke test root version
+      - name: Smoke test health endpoint
         run: |
-          curl --fail --silent --show-error --retry 5 --retry-delay 2 \
-            https://mute-grass-9428.schrsistemas.workers.dev/health | grep '"version": "0.3.3"'
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 5 --retry-delay 2             https://mute-grass-9428.schrsistemas.workers.dev/health | tee /tmp/health.json
+          grep -q '"version": "0.3.4"' /tmp/health.json
+          grep -q '"backend": "configured"' /tmp/health.json
 
       - name: Smoke test CORS preflight
         run: |
@@ -56,23 +56,10 @@ jobs:
           curl --fail --silent --show-error --retry 5 --retry-delay 2 -X OPTIONS             -H 'Origin: https://zynkronyx-control-center.pages.dev'             -H 'Access-Control-Request-Method: GET'             -D /tmp/cors.headers -o /dev/null             https://mute-grass-9428.schrsistemas.workers.dev/health
           grep -qi '^access-control-allow-origin: https://zynkronyx-control-center.pages.dev' /tmp/cors.headers
 
-      - name: Smoke test gateway backend configuration
-        run: |
-          set -euo pipefail
-          curl --fail --silent --show-error --retry 5 --retry-delay 2 \
-            https://mute-grass-9428.schrsistemas.workers.dev/health | grep '"backend": "configured"'
-
-      - name: Smoke test health endpoint
-        run: |
-          curl --fail --silent --show-error --retry 5 --retry-delay 2 \
-            https://mute-grass-9428.schrsistemas.workers.dev/health
-
       - name: Smoke test status endpoint
         run: |
-          curl --fail --silent --show-error --retry 5 --retry-delay 2 \
-            https://mute-grass-9428.schrsistemas.workers.dev/api/status
+          curl --fail --silent --show-error --retry 5 --retry-delay 2             https://mute-grass-9428.schrsistemas.workers.dev/api/status
 
       - name: Smoke test capabilities endpoint
         run: |
-          curl --fail --silent --show-error --retry 5 --retry-delay 2 \
-            https://mute-grass-9428.schrsistemas.workers.dev/api/capabilities
+          curl --fail --silent --show-error --retry 5 --retry-delay 2             https://mute-grass-9428.schrsistemas.workers.dev/api/capabilities
