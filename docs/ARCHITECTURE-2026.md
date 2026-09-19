@@ -235,7 +235,7 @@ Definir após coleta de baseline, mas medir desde o primeiro dia:
 Manter decisões arquiteturais versionadas para:
 
 - API Gateway;
-- Firebird como source of truth;
+- SGBD transacional como source of truth; Firebird é apenas o adapter atualmente implementado;
 - estratégia de eventos;
 - armazenamento RAG;
 - provider de embeddings;
@@ -291,3 +291,26 @@ A capability is not considered production-ready when code merely works. It must 
 **Phase E — Modernization:** Delphi-to-API boundaries, outbox/event contracts, data architecture and incremental decomposition based on measured bottlenecks.
 
 **Phase F — Professionalization:** architecture portfolio, English technical documentation, system-design case studies and business KPI mapping.
+
+
+## AI Sales Acceleration
+
+Sales is a bounded domain on top of the same tenant, transactional-data and AI governance foundations:
+
+```
+Lead -> qualification/scoring -> Opportunity -> Activities
+                                      |
+                                      v
+                              AI recommendation
+                                      |
+                              human approval
+                                      |
+                              CRM/action state
+```
+
+- SALES_LEAD, SALES_OPPORTUNITY, SALES_ACTIVITY and SALES_NEXT_ACTION are tenant-scoped transactional entities.
+- Lead/activity ingestion is idempotent through tenant-scoped external keys.
+- Scoring and next-action proposals are derived data and are auditable.
+- Copilot receives authorized opportunity/activity context and is prohibited from mutating CRM state.
+- Mutable actions require explicit human approval before completion.
+- Sales recommendations can later consume RAG evidence through the existing retrieval boundary without coupling the sales domain to a specific vector store or LLM provider.
