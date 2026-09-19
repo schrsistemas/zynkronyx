@@ -1,6 +1,6 @@
 name = "mute-grass-9428"
 main = "src/index.js"
-compatibility_date = "2026-09-18"
+compatibility_date = "2026-09-19"
 
 [observability]
 enabled = true
@@ -10,3 +10,8 @@ enabled = true
 
 [vars]
 APP_NAME = "Zynkronyx"
+
+[[workflows]]
+name = "zynkronyx-orchestration"
+binding = "ZYNKRONYX_ORCHESTRATION"
+class_name = "ZynkronyxOrchestration"
