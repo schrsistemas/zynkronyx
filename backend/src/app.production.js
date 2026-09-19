@@ -1,12 +1,10 @@
 const express = require('express');
-const crypto = require('node:crypto');
-
 const logger = require('./utils/logger');
 const correlation = require('./middleware/correlation.middleware');
 const rateLimit = require('./middleware/rateLimit.middleware');
 const tenant = require('./middleware/tenant');
 const auth = require('./middleware/auth.basic');
-
+const db = require('./services/db.firebird.service');
 const syncRoutes = require('./routes/sync.routes');
 const deviceRoutes = require('./routes/device.routes');
 const adminRoutes = require('./routes/admin.basic');
@@ -16,45 +14,22 @@ const auditRoutes = require('./routes/audit.routes');
 const aiRoutes = require('./routes/ai.routes');
 
 const app = express();
-
 app.disable('x-powered-by');
 app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '1mb' }));
 app.use(rateLimit);
 app.use(correlation);
 
-app.get('/health', (req, res) => res.json({
-  status: 'ok',
-  service: 'zynkronyx',
-  timestamp: new Date().toISOString(),
-  database: process.env.DB_DATABASE ? 'configured' : 'not-configured'
-}));
-
-app.use('/auth', authRoutes);
-app.use(tenant);
-app.use('/sync', auth, syncRoutes);
-app.use('/integration', auth, deviceRoutes);
-app.use('/integration/devices', auth, deviceRegistryRoutes);
-app.use('/audit', auth, auditRoutes);
-app.use('/ai', auth, aiRoutes);
-app.use('/admin', auth, adminRoutes);
-
-app.get('/metrics', (req, res) => res.type('text/plain').send('metrics ok'));
-
-app.use((req, res) => res.status(404).json({ erro: 'Rota nao encontrada' }));
-app.use((err, req, res, next) => {
-  logger.error({ err, path: req.path }, 'Unhandled request error');
-  res.status(err.status || 500).json({ erro: err.message || 'Erro interno' });
+app.get('/health', (_req,res)=>res.json({status:'ok',service:'zynkronyx',timestamp:new Date().toISOString(),database:process.env.DB_DATABASE?'configured':'not-configured'}));
+app.get('/ready', async (req,res)=>{
+  try { await db.query('SELECT 1 AS OK FROM RDB$DATABASE'); return res.json({ok:true,status:'ready',checks:{database:true},correlation_id:req.correlationId}); }
+  catch (error) { logger.warn({err:error,correlationId:req.correlationId},'Readiness database check failed'); return res.status(503).json({ok:false,status:'not_ready',checks:{database:false},error:'DATABASE_UNAVAILABLE',correlation_id:req.correlationId}); }
 });
 
-function start() {
-  const PORT = Number(process.env.PORT || 3000);
-  const server = app.listen(PORT, () => logger.info({ port: PORT }, 'API PROD rodando'));
-  if (process.env.SYNC_PROCESSOR_ENABLED === 'true') {
-    const startProcessor = require('./processor/runner');
-    startProcessor();
-  }
-  return server;
-}
-
-if (require.main === module) start();
-module.exports = { app, start };
+app.use('/auth',authRoutes); app.use(tenant);
+app.use('/sync',auth,syncRoutes); app.use('/integration',auth,deviceRoutes); app.use('/integration/devices',auth,deviceRegistryRoutes);
+app.use('/audit',auth,auditRoutes); app.use('/ai',auth,aiRoutes); app.use('/admin',auth,adminRoutes);
+app.get('/metrics',(_req,res)=>res.type('text/plain').send('metrics ok'));
+app.use((req,res)=>res.status(404).json({erro:'Rota nao encontrada',correlation_id:req.correlationId}));
+app.use((err,req,res,next)=>{ logger.error({err,path:req.path,correlationId:req.correlationId,tenantId:req.tenant?.id},'Unhandled request error'); res.status(err.status||500).json({erro:err.message||'Erro interno',correlation_id:req.correlationId}); });
+function start(){const PORT=Number(process.env.PORT||3000); const server=app.listen(PORT,()=>logger.info({port:PORT},'API PROD rodando')); if(process.env.SYNC_PROCESSOR_ENABLED==='true') require('./processor/runner')(); return server;}
+if(require.main===module) start(); module.exports={app,start};
