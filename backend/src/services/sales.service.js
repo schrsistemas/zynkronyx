@@ -1,0 +1,95 @@
+const crypto=require('node:crypto');
+const repo=require('./sales.repository');
+const audit=require('./security.audit.service');
+
+function clamp(v){return Math.min(Math.max(Number(v)||0,0),1);}
+function scoreLead(input){
+  const fit=clamp(input.fit_score);
+  const intent=clamp(input.intent_score);
+  const priority=Number((fit*0.45+intent*0.55).toFixed(4));
+  return {fit:Number(fit.toFixed(4)),intent:Number(intent.toFixed(4)),priority};
+}
+
+exports.listLeads=(tenantId,limit)=>repo.listLeads(tenantId,Math.min(Math.max(Number(limit)||50,1),100));
+exports.getLead=(tenantId,id)=>repo.getLead(tenantId,Number(id));
+
+exports.createLead=async(req,input)=>{
+  const tenantId=req.tenant.id;
+  const externalKey=String(input.external_key||input.externalKey||crypto.createHash('sha256').update([input.email,input.company,input.name].map(x=>String(x||'').trim().toLowerCase()).join('|')).digest('hex'));
+  const existing=await repo.findLeadByKey(tenantId,externalKey);
+  if(existing){return {lead:existing,idempotent:true};}
+  if(!String(input.name||'').trim()){const e=new Error('LEAD_NAME_REQUIRED');e.status=400;throw e;}
+  const lead=await repo.insertLead({tenantId,externalKey,name:String(input.name).trim(),email:input.email,company:input.company,source:input.source,metadata:input.metadata});
+  await audit.record({tenantId,action:'SALES_LEAD_CREATED',result:'ALLOWED',correlationId:req.correlationId,metadata:{lead_id:lead.ID,external_key:externalKey}});
+  return {lead,idempotent:false};
+};
+
+exports.scoreLead=async(req,id,input)=>{
+  const tenantId=req.tenant.id; const lead=await repo.getLead(tenantId,Number(id));
+  if(!lead){const e=new Error('LEAD_NOT_FOUND');e.status=404;throw e;}
+  const score=scoreLead(input||{fit_score:lead.FIT_SCORE,intent_score:lead.INTENT_SCORE});
+  const updated=await repo.updateLeadScore(tenantId,Number(id),score);
+  await audit.record({tenantId,action:'SALES_LEAD_SCORED',result:'ALLOWED',correlationId:req.correlationId,metadata:{lead_id:Number(id),score}});
+  return updated;
+};
+
+exports.createOpportunity=async(req,input)=>{
+  const opportunity=await repo.insertOpportunity({tenantId:req.tenant.id,leadId:Number(input.lead_id),title:String(input.title||'').trim(),stage:input.stage,status:input.status,amount:input.amount,probability:input.probability,expectedCloseAt:input.expected_close_at,ownerId:input.owner_id,metadata:input.metadata});
+  if(!opportunity.TITLE){const e=new Error('OPPORTUNITY_TITLE_REQUIRED');e.status=400;throw e;}
+  await audit.record({tenantId:req.tenant.id,action:'SALES_OPPORTUNITY_CREATED',result:'ALLOWED',correlationId:req.correlationId,metadata:{opportunity_id:opportunity.ID}});
+  return opportunity;
+};
+
+exports.createActivity=async(req,opportunityId,input)=>{
+  const tenantId=req.tenant.id;
+  const opportunity=await repo.getOpportunity(tenantId,Number(opportunityId));
+  if(!opportunity){const e=new Error('OPPORTUNITY_NOT_FOUND');e.status=404;throw e;}
+  const key=String(input.idempotency_key||input.idempotencyKey||'');
+  if(!key){const e=new Error('IDEMPOTENCY_KEY_REQUIRED');e.status=400;throw e;}
+  const existing=await repo.findActivityByKey(tenantId,key);
+  if(existing)return {activity:existing,idempotent:true};
+  const id=await repo.insertActivity({tenantId,opportunityId:Number(opportunityId),leadId:opportunity.LEAD_ID,idempotencyKey:key,activityType:String(input.activity_type||'NOTE'),channel:input.channel,subject:input.subject,outcome:input.outcome,occurredAt:input.occurred_at,payload:input.payload});
+  await audit.record({tenantId,action:'SALES_ACTIVITY_CREATED',result:'ALLOWED',correlationId:req.correlationId,metadata:{opportunity_id:Number(opportunityId),activity_id:id}});
+  return {activity_id:id,idempotent:false};
+};
+
+exports.proposeNextAction=async(req,opportunityId)=>{
+  const tenantId=req.tenant.id;
+  const opportunity=await repo.getOpportunity(tenantId,Number(opportunityId));
+  if(!opportunity){const e=new Error('OPPORTUNITY_NOT_FOUND');e.status=404;throw e;}
+  const activities=await repo.listActivities(tenantId,Number(opportunityId));
+  const reasons=[];
+  if(!activities.length) reasons.push('oportunidade sem atividade registrada');
+  else if(activities[0].OUTCOME) reasons.push('última interação possui resultado registrado');
+  if(opportunity.STAGE==='PROPOSAL') reasons.push('oportunidade em etapa de proposta');
+  if(!reasons.length) reasons.push('revisar próxima interação comercial');
+  const confidence=Number(Math.min(0.95,0.55+reasons.length*0.1).toFixed(4));
+  const action=await repo.insertNextAction({tenantId,opportunityId:Number(opportunityId),actionType:opportunity.STAGE==='PROPOSAL'?'FOLLOW_UP':'CONTACT',dueAt:null,rationale:reasons,confidence,source:'AI',requiresApproval:true});
+  await audit.record({tenantId,action:'SALES_AI_RECOMMENDATION',result:'PROPOSED',correlationId:req.correlationId,metadata:{opportunity_id:Number(opportunityId),next_action_id:action.ID,confidence,reasons}});
+  return action;
+};
+
+exports.approveNextAction=async(req,id)=>{
+  const action=await repo.approveNextAction(req.tenant.id,Number(id),Number(req.user?.id||0));
+  if(!action){const e=new Error('NEXT_ACTION_NOT_FOUND');e.status=404;throw e;}
+  await audit.record({tenantId:req.tenant.id,action:'SALES_AI_ACTION_APPROVED',result:'ALLOWED',correlationId:req.correlationId,metadata:{next_action_id:Number(id),approved_by:Number(req.user?.id||0)}});
+  return action;
+};
+
+exports.completeNextAction=async(req,id)=>{
+  const action=await repo.completeNextAction(req.tenant.id,Number(id));
+  if(!action){const e=new Error('NEXT_ACTION_NOT_APPROVED');e.status=409;throw e;}
+  await audit.record({tenantId:req.tenant.id,action:'SALES_ACTION_COMPLETED',result:'ALLOWED',correlationId:req.correlationId,metadata:{next_action_id:Number(id)}});
+  return action;
+};
+
+exports.copilot=async(req,opportunityId,query)=>{
+  const tenantId=req.tenant.id; const opportunity=await repo.getOpportunity(tenantId,Number(opportunityId));
+  if(!opportunity){const e=new Error('OPPORTUNITY_NOT_FOUND');e.status=404;throw e;}
+  const activities=await repo.listActivities(tenantId,Number(opportunityId));
+  const context={opportunity,activities};
+  const safeQuery='Atue como copiloto comercial. Analise somente o contexto autorizado abaixo. Não execute ações. Retorne fatos, lacunas, objeções possíveis e próxima ação sugerida com justificativas.\nCONTEXTO:\n'+JSON.stringify(context)+'\nPERGUNTA:\n'+String(query||'Faça um resumo e sugira a próxima ação.'));
+  const result=await require('./ai.service').query({query:safeQuery,top_k:6},req,{evaluation:false});
+  await audit.record({tenantId,action:'SALES_AI_COPILOT',result:'ALLOWED',correlationId:req.correlationId,metadata:{opportunity_id:Number(opportunityId)}});
+  return result;
+};
