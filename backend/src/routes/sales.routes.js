@@ -11,7 +11,7 @@ function requireSalesApproval(req,res,next){
 
 router.get('/leads',async(req,res)=>{try{return res.json({ok:true,results:await sales.listLeads(req.tenant.id,req.query.limit)});}catch(e){return res.status(e.status||500).json({ok:false,error:e.code||e.message,correlation_id:req.correlationId});}});
 router.post('/leads',async(req,res)=>{try{return res.status(201).json({ok:true,correlation_id:req.correlationId,...await sales.createLead(req,req.body||{})});}catch(e){return res.status(e.status||500).json({ok:false,error:e.code||e.message,correlation_id:req.correlationId});}});
-router.post('/leads/:id/score',async(req,res)=>{try{return res.json({ok:true,correlation_id:req.correlationId,lead:await sales.scoreLead(req,req.params.id,req.body||{})});}catch(e){return res.status(e.status||500).json({ok:false,error:e.code||e.message,correlation_id:req.correlationId});}});
+router.post('/leads/:id/score',async(req,res)=>{try{return res.json({ok:true,correlation_id:req.correlationId,lead:await sales.scoreLeadAction(req,req.params.id,req.body||{})});}catch(e){return res.status(e.status||500).json({ok:false,error:e.code||e.message,correlation_id:req.correlationId});}});
 
 router.get('/opportunities',async(req,res)=>{try{return res.json({ok:true,results:await sales.listOpportunities(req.tenant.id)});}catch(e){return res.status(e.status||500).json({ok:false,error:e.code||e.message,correlation_id:req.correlationId});}});
 router.post('/opportunities',async(req,res)=>{try{return res.status(201).json({ok:true,correlation_id:req.correlationId,opportunity:await sales.createOpportunity(req,req.body||{})});}catch(e){return res.status(e.status||500).json({ok:false,error:e.code||e.message,correlation_id:req.correlationId});}});
