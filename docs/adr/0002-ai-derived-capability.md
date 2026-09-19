@@ -4,7 +4,7 @@
 LLM output and vector indexes are probabilistic/derived artifacts and cannot be the system of record.
 
 ## Decision
-AI/RAG may assist retrieval, explanation and analysis, but Firebird and authorized application services remain authoritative. LLMs receive no arbitrary database access and cannot generate executable SQL for production actions.
+AI/RAG may assist retrieval, explanation and analysis, but The configured transactional SGBD and authorized application services remain authoritative. LLMs receive no arbitrary database access and cannot generate executable SQL for production actions.
 
 ## Consequences
 AI failures must degrade safely. Retrieval indexes can be rebuilt without losing business data.
