@@ -201,3 +201,9 @@ without requiring a live external LLM provider.
 ## Architectural rule
 
 The API is a contract boundary, not a reflection of internal implementation details. Domain services, database adapters, vector stores and AI providers may evolve behind these contracts without forcing clients to depend on their internal structure.
+
+### AI prompt promotion lineage
+
+- `GET /ai/prompts/:id/promotion-history` returns tenant-scoped immutable promotion/rollback decision records.
+- Each record captures candidate/baseline versions, evaluation count and scores, delta, canary/release evidence, decision, operator, correlation ID, reason and details snapshot.
+- `POST /ai/prompts/:id/promote` re-evaluates the promotion gate inside the service transaction; promotion requires the configured evaluation policy and a previously `PASSED` canary.
