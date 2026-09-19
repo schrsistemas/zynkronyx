@@ -84,6 +84,8 @@ Governance mutations require the configured AI governance authorization.
   - accepts optional `Idempotency-Key` header (or `idempotency_key` body field); repeated requests with the same key for the same refinement return the previously created draft instead of creating another one; reuse of the same key for another refinement is rejected.
 - `GET /ai/releases`
 - `POST /ai/releases`
+- `POST /ai/releases/:id/finish`  
+  - governance-only canary completion; accepts `PASSED` or `FAILED`; promotion remains blocked until a candidate has a passed canary.  
 - `POST /ai/releases/:id/rollback`
 
 Governance flow:
