@@ -40,7 +40,7 @@ Node/Express API         AI Gateway
 
 1. **Edge** — Cloudflare Worker, CORS, rate limiting, correlation ID, routing.
 2. **Application** — casos de uso, autenticação, autorização, idempotência, políticas.
-3. **Domain** — regras de sincronização, conflitos, dispositivos, integrações e auditoria.
+3. **Domain** — regras de sincronização, conflitos, dispositivos, integrações, auditoria e aceleração comercial.
 4. **Infrastructure** — adapter do SGBD transacional/driver, filas/outbox, armazenamento documental e provedores externos.
 5. **AI platform** — ingestão, chunking, embeddings, retrieval, reranking, prompt assembly, LLM, guardrails e avaliação.
 6. **Observability** — logs estruturados, métricas, tracing, auditoria, SLOs e alertas.
@@ -95,6 +95,11 @@ Configuração por ambiente, nunca hard-coded:
 - `AI_TEMPERATURE`
 - `RAG_ENABLED`
 - `RAG_TOP_K`
+- `AI_GOVERNANCE_USERS`
+- `SALES_APPROVAL_USERS`
+- `SALES_SCORE_POLICY_VERSION`
+- `SALES_FIT_WEIGHT`
+- `SALES_INTENT_WEIGHT`
 
 ## Segurança de IA
 
@@ -293,24 +298,135 @@ A capability is not considered production-ready when code merely works. It must 
 **Phase F — Professionalization:** architecture portfolio, English technical documentation, system-design case studies and business KPI mapping.
 
 
+## Knowledge routes and boundaries
+
+The knowledge plane is exposed through the governed AI boundary rather than a parallel undocumented API:
+
+```
+POST /ai/rag/documents
+        |
+        v
+ingestion -> chunks -> embeddings -> derived index
+
+POST /ai/rag/retrieve
+        |
+        v
+tenant + ACL -> vector/lexical retrieval -> reranking -> bounded context
+
+POST /ai/query
+        |
+        v
+authorized context -> versioned prompt -> provider -> audit
+```
+
+`/ai/rag/documents/preview` is explicitly non-authoritative and is intended for preview/validation without making preview output transactional state.
+
+The vector store is a derived search projection. The configured transactional SGBD remains authoritative for document lifecycle, ingestion state, audit and governance metadata.
+
 ## AI Sales Acceleration
 
-Sales is a bounded domain on top of the same tenant, transactional-data and AI governance foundations:
+Sales is a bounded domain on top of the same tenant, transactional-data, knowledge and AI-governance foundations:
 
 ```
-Lead -> qualification/scoring -> Opportunity -> Activities
-                                      |
-                                      v
-                              AI recommendation
-                                      |
-                              human approval
-                                      |
-                              CRM/action state
+Lead
+  |
+  v
+normalization / deduplication
+  |
+  v
+ICP --------+
+            |
+Intent -----+--> versioned Score Policy --> Priority
+                                         |
+                                         v
+                                   Opportunity
+                                         |
+                                      Activities
+                                         |
+                              +----------+----------+
+                              |                     |
+                         RAG evidence          Copilot/LLM
+                              |                     |
+                              +----------+----------+
+                                         |
+                                  recommendation
+                                         |
+                                  human approval
+                                         |
+                                     execution
+                                         |
+                                      feedback
 ```
 
-- SALES_LEAD, SALES_OPPORTUNITY, SALES_ACTIVITY and SALES_NEXT_ACTION are tenant-scoped transactional entities.
-- Lead/activity ingestion is idempotent through tenant-scoped external keys.
-- Scoring and next-action proposals are derived data and are auditable.
-- Copilot receives authorized opportunity/activity context and is prohibited from mutating CRM state.
-- Mutable actions require explicit human approval before completion.
-- Sales recommendations can later consume RAG evidence through the existing retrieval boundary without coupling the sales domain to a specific vector store or LLM provider.
+### Commercial scoring boundary
+
+Lead priority is derived state. The scoring policy is versioned so historical scores can be attributed to the policy that generated them.
+
+Current scoring boundary supports:
+
+- ICP/fit score;
+- explicit intent score;
+- weighted intent signals;
+- configurable fit/intent weights;
+- persisted score-policy version.
+
+The current default weighting is configuration, not a permanent domain invariant. Future scoring policies can evolve without changing the public lead contract.
+
+### Sales invariants
+
+- `SALES_LEAD`, `SALES_OPPORTUNITY`, `SALES_ACTIVITY` and `SALES_NEXT_ACTION` are tenant-scoped transactional entities.
+- Lead identity is normalized before automatic deduplication.
+- Lead/activity ingestion uses tenant-scoped idempotency boundaries.
+- Scores and next-action proposals are derived and auditable.
+- Recommendations may consume authorized RAG evidence through the retrieval boundary.
+- Copilot receives authorized opportunity/activity context and cannot mutate CRM state.
+- AI recommendation state begins as `PROPOSED`.
+- Mutable recommendation lifecycle is `PROPOSED -> APPROVED -> COMPLETED`.
+- Approval and completion require the configured human authorization boundary.
+- Sales remains decoupled from a specific vector store, LLM provider and SGBD engine.
+
+### Refinement loop
+
+Commercial intelligence follows the same engineering principle as prompt governance:
+
+```
+signals + outcomes
+       |
+       v
+evaluation dataset
+       |
+       v
+offline scoring evaluation
+       |
+       v
+candidate policy
+       |
+       v
+controlled rollout
+       |
+       v
+business + quality metrics
+       |
+       +--> promote
+       |
+       +--> rollback/refine
+```
+
+A scoring-policy change must not silently reinterpret historical scores. Policy version, evidence and observed outcome provide the basis for later comparison and refinement.
+
+## Current implementation boundary
+
+Implemented today:
+
+- generic SQL database service/dialect boundary;
+- Firebird database adapter and executable Firebird migrations;
+- tenant-scoped RAG lifecycle;
+- embedding/vector provider boundaries with lexical fallback;
+- AI prompt evaluation and release governance;
+- tenant-scoped AI Sales foundation;
+- normalized lead identity;
+- versioned ICP/Intent scoring;
+- RAG-backed sales evidence;
+- governed human approval/completion.
+
+Architectural targets that are **not implied as already implemented** merely by appearing in this document include additional SGBD adapters, complete event/outbox infrastructure, full OpenAPI coverage, distributed tracing, production SLO enforcement and advanced enrichment providers.
