@@ -28,6 +28,8 @@
     "humanApprovalForPromptChanges": true,
     "feedbackIdempotency": true,
     "feedbackRefinementLineage": true,
-    "promptRefinementBaseLineage": true
+    "promptRefinementBaseLineage": true,
+    "canaryBeforePromotion": true,
+    "promotionRequiresPassedCanary": true
   }
 }
