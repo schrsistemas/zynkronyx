@@ -127,7 +127,7 @@ exports.copilot=async(req,opportunityId,query)=>{
   if(!opportunity){const e=new Error('OPPORTUNITY_NOT_FOUND');e.status=404;throw e;}
   const activities=await repo.listActivities(tenantId,Number(opportunityId));
   const context={opportunity,activities};
-  const safeQuery='Atue como copiloto comercial. Analise somente o contexto autorizado abaixo. Não execute ações. Retorne fatos, lacunas, objeções possíveis e próxima ação sugerida com justificativas.\nCONTEXTO:\n'+JSON.stringify(context)+'\nPERGUNTA:\n'+String(query||'Faça um resumo e sugira a próxima ação.'));
+  const safeQuery='Atue como copiloto comercial. Analise somente o contexto autorizado abaixo. Não execute ações. Retorne fatos, lacunas, objeções possíveis e próxima ação sugerida com justificativas.\nCONTEXTO:\n'+JSON.stringify(context)+'\nPERGUNTA:\n'+String(query||'Faça um resumo e sugira a próxima ação.');
   const result=await require('./ai.service').query({query:safeQuery,top_k:6},req,{evaluation:false});
   await audit.record({tenantId,action:'SALES_AI_COPILOT',result:'ALLOWED',correlationId:req.correlationId,metadata:{opportunity_id:Number(opportunityId)}});
   return result;
