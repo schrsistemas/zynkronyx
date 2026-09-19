@@ -7,7 +7,7 @@ Worker público inicial do Zynkronyx.
 - `GET /` — página pública de status.
 - `GET /health` — health check.
 - `GET /api/status` — metadados do serviço.
-- `GET /api/capabilities` — capacidades públicas e roadmap técnico.
+- `GET /api/capabilities` — capacidades públicas e roadmap técnico.\n- `POST /workflow` — inicia a orquestração Cloudflare; exige `WORKFLOW_TOKEN` via `Authorization: Bearer ...` ou `x-workflow-token`.
 
 ## Deploy
 
