@@ -13,7 +13,7 @@ function load(){
   };
   const prompts={
     getById:async(tenant,id)=>({ID:id,TENANT_ID:tenant,STATUS:'DRAFT',VERSION_NO:4}),
-    promotionGate:async()=>({candidate_score:.91,baseline_score:.8,candidate_eval_count:4})
+    evaluationGate:async()=>({candidate_score:.91,baseline_score:.8,candidate_eval_count:4})
   };
   Module._load=function(request,parent,isMain){
     if(request==='./db.service'&&parent?.filename?.endsWith('ai.release.service.js'))return db;
