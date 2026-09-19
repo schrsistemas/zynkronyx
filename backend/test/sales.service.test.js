@@ -21,3 +21,15 @@ test('sales lead identity normalization is deterministic',()=>{
     metadata:undefined
   });
 });
+
+test('versioned ICP and intent scoring combines weighted signals',()=>{
+  const previous=process.env.SALES_SCORE_POLICY_VERSION;
+  process.env.SALES_SCORE_POLICY_VERSION='v2-test';
+  const {scoreLeadV2}=require('../src/services/sales.service');
+  const result=scoreLeadV2({icp_score:0.8,intent_signals:[{score:1,weight:2},{score:0.5,weight:1}]});
+  assert.equal(result.policy_version,'v2-test');
+  assert.equal(result.fit,0.8);
+  assert.equal(result.intent,0.8333);
+  assert.equal(result.priority,0.8183);
+  if(previous===undefined) delete process.env.SALES_SCORE_POLICY_VERSION; else process.env.SALES_SCORE_POLICY_VERSION=previous;
+});
