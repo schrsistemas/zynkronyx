@@ -1,5 +1,6 @@
 const crypto = require('node:crypto');
 const db = require('./db.service');
+function dialect() { return db.dialect(); }
 
 function tokenHash(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
@@ -27,7 +28,7 @@ exports.register = async (tenantId, input) => {
   const scopeList = scopes(input);
   await db.execute(`INSERT INTO INTEGRATION_DEVICE
     (TENANT_ID, DEVICE_ID, DEVICE_TYPE, NAME, STATUS, PROTOCOL_VERSION, CREDENTIAL_HASH, CREDENTIAL_CREATED_AT, CREDENTIAL_EXPIRES_AT, CREDENTIAL_VERSION, SCOPES)
-    VALUES (?, ?, ?, ?, 'A', ?, ?, CURRENT_TIMESTAMP, DATEADD(${expiresDays} DAY TO CURRENT_TIMESTAMP), 1, ?)`,
+    VALUES (?, ?, ?, ?, 'A', ?, ?, ${dialect().currentTimestamp}, ${dialect().addDays(expiresDays)}, 1, ?)`,
     [tenantId,input.device_id.trim(),input.device_type,input.name || null,input.protocol_version || 1,tokenHash(token),scopeList]);
   return { device_id: input.device_id.trim(), credential: token, expires_in_days: expiresDays, scopes: scopeList.split(',') };
 };
@@ -38,15 +39,15 @@ exports.revoke = async (tenantId, deviceId) => {
 };
 exports.authenticate = async (tenantId, deviceId, credential) => {
   if (!deviceId || !credential) return null;
-  const rows = await db.query(`SELECT DEVICE_ID, DEVICE_TYPE, PROTOCOL_VERSION, SCOPES FROM INTEGRATION_DEVICE WHERE TENANT_ID=? AND DEVICE_ID=? AND STATUS='A' AND CREDENTIAL_HASH=? AND (CREDENTIAL_EXPIRES_AT IS NULL OR CREDENTIAL_EXPIRES_AT > CURRENT_TIMESTAMP)`,[tenantId,deviceId,tokenHash(credential)]);
+  const rows = await db.query(`SELECT DEVICE_ID, DEVICE_TYPE, PROTOCOL_VERSION, SCOPES FROM INTEGRATION_DEVICE WHERE TENANT_ID=? AND DEVICE_ID=? AND STATUS='A' AND CREDENTIAL_HASH=? AND (CREDENTIAL_EXPIRES_AT IS NULL OR CREDENTIAL_EXPIRES_AT > ${dialect().currentTimestamp})`,[tenantId,deviceId,tokenHash(credential)]);
   return rows[0] || null;
 };
 exports.rotate = async (tenantId, deviceId) => {
   const token = crypto.randomBytes(32).toString('base64url');
   const expiresDays = credentialDays();
   const result = await db.execute(
-    `UPDATE INTEGRATION_DEVICE SET CREDENTIAL_HASH=?, CREDENTIAL_CREATED_AT=CURRENT_TIMESTAMP,
-      CREDENTIAL_EXPIRES_AT=DATEADD(${expiresDays} DAY TO CURRENT_TIMESTAMP), CREDENTIAL_VERSION=COALESCE(CREDENTIAL_VERSION,0)+1
+    `UPDATE INTEGRATION_DEVICE SET CREDENTIAL_HASH=?, CREDENTIAL_CREATED_AT=${dialect().currentTimestamp},
+      CREDENTIAL_EXPIRES_AT=${dialect().addDays(expiresDays)}, CREDENTIAL_VERSION=COALESCE(CREDENTIAL_VERSION,0)+1
      WHERE TENANT_ID=? AND DEVICE_ID=? AND STATUS='A'`,
     [tokenHash(token), tenantId, deviceId]);
   if (!result) return null;
