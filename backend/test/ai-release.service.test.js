@@ -6,6 +6,7 @@ function load(){
   const original=Module._load;
   const state={inserted:null};
   const db={
+    dialect:()=>({currentTimestamp:'CURRENT_TIMESTAMP'}),
     nextId:async()=>55,
     execute:async(sql,params)=>{state.inserted={sql,params};},
     query:async()=>[]
