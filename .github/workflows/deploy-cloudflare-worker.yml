@@ -37,7 +37,13 @@ jobs:
       - name: Smoke test root version
         run: |
           curl --fail --silent --show-error --retry 5 --retry-delay 2 \
-            https://mute-grass-9428.schrsistemas.workers.dev/health | grep '"version": "0.3.0"'
+            https://mute-grass-9428.schrsistemas.workers.dev/health | grep '"version": "0.3.1"'
+
+      - name: Smoke test CORS preflight
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 5 --retry-delay 2 -X OPTIONS             -H 'Origin: https://zynkronyx-control-center.pages.dev'             -H 'Access-Control-Request-Method: GET'             -D /tmp/cors.headers -o /dev/null             https://mute-grass-9428.schrsistemas.workers.dev/health
+          grep -qi '^access-control-allow-origin: https://zynkronyx-control-center.pages.dev' /tmp/cors.headers
 
       - name: Smoke test health endpoint
         run: |
