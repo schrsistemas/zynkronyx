@@ -200,6 +200,21 @@ function Radar() {
 }
 
 
+function AIGovernanceOverview({authVersion}) {
+ const [data,setData]=useState({eval:[],feedback:[],refinement:[],releases:[],audit:[]}),[error,setError]=useState(null),[loading,setLoading]=useState(false);
+ async function load(){setLoading(true);setError(null);try{const h={headers:authHeaders(),cache:"no-store"};const urls=["/ai/eval/cases","/ai/feedback/summary","/ai/refinement","/ai/releases","/ai/audit"];const rs=await Promise.all(urls.map(u=>fetch(API+u,h)));const js=await Promise.all(rs.map(r=>r.json()));const bad=rs.findIndex(r=>!r.ok);if(bad>=0)throw new Error(js[bad].error||js[bad].erro||"Falha ao carregar governança");setData({eval:js[0].results||[],feedback:js[1].results||[],refinement:js[2].results||[],releases:js[3].results||[],audit:js[4].results||[]})}catch(e){setError(e.message)}finally{setLoading(false)}}
+ useEffect(()=>{load()},[authVersion]);
+ const pending=data.refinement.filter(x=>String(x.STATUS||"").toUpperCase()==="PENDING").length;
+ const running=data.releases.filter(x=>String(x.STATUS||"").toUpperCase()==="RUNNING").length;
+ const passed=data.releases.filter(x=>String(x.STATUS||"").toUpperCase()==="PASSED").length;
+ return <div className="panel"><div className="sectionTitle"><h3>AI governance telemetry</h3><button onClick={load}>{loading?"Atualizando…":"Atualizar"}</button></div>
+  {error&&<div className="resultBox">{error}</div>}
+  <div className="stats"><Stat title="Eval cases" value={data.eval.length} note="active cases"/><Stat title="Feedback" value={data.feedback.length} note="prompt groups"/><Stat title="Refinement" value={pending} note="pending review"/><Stat title="Canary" value={running+" / "+passed} note="running / passed"/></div>
+  <div className="architecture"><div>EVALUATE<span>{data.eval.length} cases</span></div><b>→</b><div>FEEDBACK<span>{data.feedback.length} groups</span></div><b>→</b><div>REFINE<span>{pending} pending</span></div><b>→</b><div>CANARY<span>{running} running</span></div><b>→</b><div>PROMOTE<span>audited</span></div></div>
+  <div className="row"><div><strong>Production audit</strong><small>{data.audit.length} registros recentes disponíveis para o tenant.</small></div><span className="status">OBSERVED</span></div>
+ </div>;
+}
+
 function AIPromotionLineage({authVersion}) {
  const [prompts,setPrompts]=useState([]),[selected,setSelected]=useState(null),[history,setHistory]=useState([]),[error,setError]=useState(null),[loading,setLoading]=useState(false);
  const auth=authHeaders();
@@ -257,6 +272,7 @@ function AICenter({authVersion}) {
    <Stat title="Prompt" value={status?.promptVersion||"—"} note="active baseline"/>
   </div>
   <AIPromotionLineage authVersion={authVersion}/>
+  <AIGovernanceOverview authVersion={authVersion}/>
   <div className="panel">
    <div className="sectionTitle"><h3>Consulta controlada</h3><span>Tenant + authorization + audit</span></div>
    <form className="securityForm" onSubmit={ask}>
