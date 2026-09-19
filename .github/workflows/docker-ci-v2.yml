@@ -11,6 +11,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build image
         run: docker build -f Dockerfile.prod -t zynkronyx:test .
+      - name: Module load smoke test
+        run: |
+          docker run --rm zynkronyx:test node -e "require('./src/app.production'); console.log('PRODUCTION_MODULE_LOAD_OK')"
       - name: Run container
         run: |
           docker run -d -p 3000:3000 --name ztest             -e AUTH_LOGIN=ci             -e AUTH_PASSWORD=ci-password-123             -e AUTH_TOKEN=ci-token-0123456789-0123456789-012345             zynkronyx:test
@@ -21,7 +24,11 @@ jobs:
             curl -s http://localhost:3000/health && exit 0
             sleep 2
           done
-          echo "API não respondeu" && exit 1
+          echo "API não respondeu"
+          docker ps -a --filter name=ztest
+          docker inspect ztest --format '{{json .State}}' || true
+          docker logs ztest || true
+          exit 1
       - name: Test endpoints
         run: |
           curl -f http://localhost:3000/health
