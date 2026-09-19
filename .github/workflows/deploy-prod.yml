@@ -22,15 +22,22 @@ jobs:
 
       - name: Runtime smoke test
         run: |
-          set -e
-          docker run -d -p 3000:3000 --name zynkronyx-production-smoke -e SYNC_PROCESSOR_ENABLED=false zynkronyx:production
+          set -euxo pipefail
+          docker rm -f zynkronyx-production-smoke >/dev/null 2>&1 || true
+          docker run -d --init -p 3000:3000 --name zynkronyx-production-smoke \
+            -e PORT=3000 \
+            -e SYNC_PROCESSOR_ENABLED=false \
+            zynkronyx:production
           for i in $(seq 1 30); do
-            if curl -fsS http://localhost:3000/health; then
+            if curl -fsS --max-time 3 http://127.0.0.1:3000/health; then
               exit 0
             fi
             sleep 2
           done
-          docker logs zynkronyx-production-smoke
+          echo "Production container did not become healthy."
+          docker ps -a --filter name=zynkronyx-production-smoke
+          docker inspect zynkronyx-production-smoke --format '{{json .State}}' || true
+          docker logs zynkronyx-production-smoke || true
           exit 1
 
       - name: Cleanup
