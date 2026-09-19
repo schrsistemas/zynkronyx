@@ -18,6 +18,8 @@ function getAdapter() {
   return adapter;
 }
 
+async function nextId(resource) { return getAdapter().nextId(resource); }
+
 async function health() {
   const adapter = getAdapter();
   if (typeof adapter.health === 'function') return adapter.health();
@@ -28,6 +30,7 @@ async function health() {
 module.exports = {
   driverName,
   getAdapter,
+  nextId,
   health,
   query: (...args) => getAdapter().query(...args),
   execute: (...args) => getAdapter().execute(...args),
