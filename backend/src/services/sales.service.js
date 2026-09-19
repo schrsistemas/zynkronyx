@@ -10,6 +10,8 @@ function scoreLead(input){
   return {fit:Number(fit.toFixed(4)),intent:Number(intent.toFixed(4)),priority};
 }
 
+exports.scoreLead=scoreLead;
+
 exports.listLeads=(tenantId,limit)=>repo.listLeads(tenantId,Math.min(Math.max(Number(limit)||50,1),100));
 exports.getLead=(tenantId,id)=>repo.getLead(tenantId,Number(id));
 
