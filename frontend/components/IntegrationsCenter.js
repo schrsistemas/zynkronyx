@@ -31,6 +31,7 @@ export default function IntegrationsCenter() {
         event_id: crypto.randomUUID(),
         device_id:form.device_id,
         device_type:form.device_type,
+        protocol_version:Number(form.protocol_version)||1,
         operation:form.operation,
         sequence:Number(form.sequence)||1,
         payload,
