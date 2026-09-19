@@ -4,7 +4,9 @@ const requests = {};
 
 const resetTimer = setInterval(() => {
   for (const k in requests) requests[k] = 0;
-}, 60000);\nresetTimer.unref?.();
+}, 60000);
+
+resetTimer.unref?.();
 
 module.exports = (req, res, next) => {
   const key = req.headers['x-api-key'] || 'anon';
