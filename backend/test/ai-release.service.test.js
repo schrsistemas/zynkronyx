@@ -9,7 +9,8 @@ function load(){
     dialect:()=>({currentTimestamp:'CURRENT_TIMESTAMP'}),
     nextId:async()=>55,
     execute:async(sql,params)=>{state.inserted={sql,params};},
-    query:async()=>[]
+    query:async()=>[{ID:55,PROMPT_VERSION_ID:9,BASELINE_VERSION_ID:8,STATUS:'RUNNING'}],
+    withTransaction:async(work)=>work({execute:async()=>{},nextId:async()=>77})
   };
   const prompts={
     getById:async(tenant,id)=>({ID:id,TENANT_ID:tenant,STATUS:'DRAFT',VERSION_NO:4}),
