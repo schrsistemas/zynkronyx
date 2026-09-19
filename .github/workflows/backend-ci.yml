@@ -71,7 +71,7 @@ jobs:
           curl -fsSI http://localhost:3000/health | grep -qi '^x-correlation-id:' || true
       - name: Validate protected route
         run: |
-          test "$(curl -s -o /dev/null -w '%{http_code}'             -H "x-api-key: ${CI_INVALID_API_KEY:-ci-invalid-key}"             http://localhost:3000/admin/status)" = "401"
+          test "$(curl -s -o /dev/null -w '%{http_code}'             -H "x-api-key: ${CI_INVALID_API_KEY:-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx}"             http://localhost:3000/admin/status)" = "401"
       - name: Logs on failure
         if: failure()
         run: docker logs zynkronyx-backend-ci
