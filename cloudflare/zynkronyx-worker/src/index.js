@@ -1,4 +1,4 @@
-const VERSION = "0.3.3";
+const VERSION = "0.4.0";
 
 const ALLOWED_ORIGINS = new Set([
   "https://zynkronyx-control-center.pages.dev",
@@ -53,7 +53,7 @@ export default { async fetch(request,env) {
   const url=new URL(request.url); const path=url.pathname.replace(/\/+$/,"")||"/";
   if(request.method==="OPTIONS") return new Response(null,{status:204,headers:publicHeaders(request)});
   if(path==="/health") return json({ok:true,service:"zynkronyx-gateway",status:"healthy",version:VERSION,backend:backendUrl(env)?"configured":"not-configured",timestamp:now()},200,request);
-  if(path==="/api/status") return json({ok:true,service:"zynkronyx-gateway",version:VERSION,runtime:"cloudflare-workers",backend:backendUrl(env)?"configured":"not-configured",environment:"public",timestamp:now()},200,request);
+  if(path==="/workflow" && request.method==="POST") { if (!env.ZYNKRONYX_ORCHESTRATION) return json({ok:false,error:"WORKFLOW_NOT_CONFIGURED"},503,request); try { const payload=await request.json().catch(()=>({})); const instance=await env.ZYNKRONYX_ORCHESTRATION.create({params:payload}); return json({ok:true,workflow:"zynkronyx-orchestration",instance_id:instance.id,status:instance.status},202,request); } catch(error) { return json({ok:false,error:"WORKFLOW_CREATE_FAILED",message:error?.message||"workflow create failed"},502,request); } }\n  if(path==="/api/status") return json({ok:true,service:"zynkronyx-gateway",version:VERSION,runtime:"cloudflare-workers",backend:backendUrl(env)?"configured":"not-configured",environment:"public",timestamp:now()},200,request);
   if(path==="/api/capabilities") return json({ok:true,capabilities:[{name:"health",method:"GET",path:"/health",status:"active"},{name:"status",method:"GET",path:"/api/status",status:"active"},{name:"capabilities",method:"GET",path:"/api/capabilities",status:"active"},{name:"gateway-proxy",status:backendUrl(env)?"active":"awaiting-backend-url",paths:["/auth/*","/sync/*","/integration/*","/audit/*","/admin/*","/metrics/*","/ai/*","/sales/*"]},{name:"database",status:"configured",target:"transactional-sgbd"},{name:"ai-sales",status:"active",paths:["/sales/leads","/sales/opportunities","/sales/opportunities/:id/copilot"]}],timestamp:now()},200,request);
   if(path==="/") return new Response(HTML,{headers:{"content-type":"text/html; charset=UTF-8",...publicHeaders(request)}});
   return proxy(request,env,path);
