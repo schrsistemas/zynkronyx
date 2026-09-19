@@ -45,7 +45,7 @@ export default function Home() {
 
   const serviceRows = [
     ["API Gateway", status?.ok ? "online" : "offline", status?.runtime || "Worker"],
-    ["Database", findCapability(capabilities, "database")?.status || "planned", "Firebird"],
+    ["Database", findCapability(capabilities, "database")?.status || "planned", "Configured SGBD"],
     ["Observability", "planned", "Tracing"],
     ["DelphiDBUtils", "development", "FireDAC"],
   ];
@@ -109,10 +109,10 @@ function Overview({status,latency,services,capabilities}) {
     <Stat title="API round trip" value={latency ? latency + " ms" : "—"} note="live browser check"/>
     <Stat title="Services" value={services.length} note="registered"/>
     <Stat title="Environment" value={status?.environment?.toUpperCase() || "PUBLIC"} note="serverless"/>
-    <Stat title="Database" value={findCapability(capabilities,"database")?.status === "active" ? "Firebird" : "NEXT"} note="data layer"/>
+    <Stat title="Database" value={findCapability(capabilities,"database")?.status === "active" ? "ACTIVE" : "NEXT"} note="data layer"/>
   </div>
   <section><div className="sectionTitle"><h3>Service health</h3><span>Live API data</span></div><div className="serviceGrid">{services.map(s=><div className="service" key={s[0]}><div className="serviceIcon">◆</div><div className="serviceName">{s[0]}</div><span className={"status " + (s[1]==="online"?"":"muted")}>{s[1]}</span><div className="serviceMeta">{s[2]}</div></div>)}</div></section>
-  <section><div className="sectionTitle"><h3>Architecture</h3><span>Current foundation</span></div><div className="architecture"><div>CLIENTS<span>Delphi · Web · Android</span></div><b>→</b><div>EDGE<span>Cloudflare Worker</span></div><b>→</b><div>BACKEND<span>Node · Express</span></div><b>→</b><div>DATA<span>Firebird</span></div></div></section>
+  <section><div className="sectionTitle"><h3>Architecture</h3><span>Current foundation</span></div><div className="architecture"><div>CLIENTS<span>Delphi · Web · Android</span></div><b>→</b><div>EDGE<span>Cloudflare Worker</span></div><b>→</b><div>BACKEND<span>Node · Express</span></div><b>→</b><div>DATA<span>Configured SGBD</span></div></div></section>
  </div>
 }
 
@@ -250,7 +250,7 @@ function Docs() { return <div className="panel"><p className="lead">Documentaç�
 
 function Database({capabilities}) {
  const db=findCapability(capabilities,"database");
- return <div className="emptyState"><div className="bigIcon">▣</div><h2>Data layer</h2><p>Status informado pela API: <strong>{db?.status || "planned"}</strong>. A camada de dados operacional alvo é Firebird. A interface exibirá dados reais quando a API autenticada de banco estiver disponível.</p><div className="progress"><span style={{width:db?.status==="active"?"100%":"42%"}}/></div><small>{db?.status==="active"?"Connected":"Foundation"}</small></div>
+ return <div className="emptyState"><div className="bigIcon">▣</div><h2>Data layer</h2><p>Status informado pela API: <strong>{db?.status || "planned"}</strong>. A camada de dados operacional é definida pelo SGBD configurado no deployment. A interface exibirá dados reais quando a API autenticada de banco estiver disponível.</p><div className="progress"><span style={{width:db?.status==="active"?"100%":"42%"}}/></div><small>{db?.status==="active"?"Connected":"Foundation"}</small></div>
 }
 
 
