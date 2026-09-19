@@ -7,7 +7,7 @@ function clean(value,max=2000){return String(value??'').trim().slice(0,max);}
 function notFound(code,status=404){return Object.assign(new Error(code),{status});}
 async function nextId(){return db.nextId('AI_REFINEMENT_ITEM');}
 async function get(tenantId,id){
-  const rows=await db.query('SELECT ID,TENANT_ID,AUDIT_ID,PROMPT_VERSION_ID,FEEDBACK_ID,TYPE,SOURCE,TITLE,PROPOSED_CHANGE_JSON,STATUS,ACCEPT_IDEMPOTENCY_KEY,CREATED_BY,REVIEWED_BY,CREATED_AT,REVIEWED_AT FROM AI_REFINEMENT_ITEM WHERE ID=? AND TENANT_ID=?',[Number(id),tenantId]);
+  const rows=await db.query('SELECT ID,TENANT_ID,AUDIT_ID,BASE_PROMPT_VERSION_ID,PROMPT_VERSION_ID,FEEDBACK_ID,TYPE,SOURCE,TITLE,PROPOSED_CHANGE_JSON,STATUS,ACCEPT_IDEMPOTENCY_KEY,CREATED_BY,REVIEWED_BY,CREATED_AT,REVIEWED_AT FROM AI_REFINEMENT_ITEM WHERE ID=? AND TENANT_ID=?',[Number(id),tenantId]);
   if(!rows[0])throw notFound('AI_REFINEMENT_NOT_FOUND');
   return rows[0];
 }
@@ -17,23 +17,30 @@ async function list(tenantId,limit=50){
   return db.query(sql,[tenantId]);
 }
 async function validateLinks(input){
-  if(input.auditId!=null){
-    const rows=await db.query('SELECT ID FROM AI_QUERY_AUDIT WHERE ID=? AND TENANT_ID=?',[Number(input.auditId),input.tenantId]);
-    if(!rows[0])throw notFound('AI_AUDIT_NOT_FOUND');
-  }
+  let linkedAuditId=input.auditId==null?null:Number(input.auditId);
   if(input.feedbackId!=null){
     const rows=await db.query('SELECT ID,AUDIT_ID FROM AI_QUERY_FEEDBACK WHERE ID=? AND TENANT_ID=?',[Number(input.feedbackId),input.tenantId]);
     if(!rows[0])throw notFound('AI_FEEDBACK_NOT_FOUND');
-    if(input.auditId!=null&&Number(rows[0].AUDIT_ID)!==Number(input.auditId))throw notFound('AI_FEEDBACK_AUDIT_MISMATCH',409);
+    if(linkedAuditId!=null&&Number(rows[0].AUDIT_ID)!==linkedAuditId)throw notFound('AI_FEEDBACK_AUDIT_MISMATCH',409);
+    linkedAuditId=Number(rows[0].AUDIT_ID);
   }
-  if(input.promptVersionId!=null)await prompts.getById(input.tenantId,Number(input.promptVersionId));
+  if(linkedAuditId!=null){
+    const rows=await db.query('SELECT ID FROM AI_QUERY_AUDIT WHERE ID=? AND TENANT_ID=?',[linkedAuditId,input.tenantId]);
+    if(!rows[0])throw notFound('AI_AUDIT_NOT_FOUND');
+  }
+  let basePromptId=input.promptVersionId==null?null:Number(input.promptVersionId);
+  if(basePromptId==null){
+    const base=await prompts.resolve(input.tenantId);
+    if(base)basePromptId=Number(base.ID);
+  }else await prompts.getById(input.tenantId,basePromptId);
+  return {auditId:linkedAuditId,basePromptId};
 }
 async function create(input={}){
   if(!input.tenantId)throw notFound('TENANT_REQUIRED',400);
-  await validateLinks(input);
+  const links=await validateLinks(input);
   const id=await nextId();
   const proposed={kind:'PROMPT_REFINEMENT_PROPOSAL',principle:'create-new-draft',rationale:clean(input.rationale,4000),source_feedback_id:input.feedbackId==null?null:Number(input.feedbackId),suggested_change:input.suggestedChange||{}};
-  await db.execute('INSERT INTO AI_REFINEMENT_ITEM (ID,TENANT_ID,AUDIT_ID,PROMPT_VERSION_ID,FEEDBACK_ID,TYPE,SOURCE,TITLE,PROPOSED_CHANGE_JSON,STATUS,CREATED_BY) VALUES (?,?,?,?,?,?,?,?,?,?,?)',[id,input.tenantId,input.auditId==null?null:Number(input.auditId),input.promptVersionId==null?null:Number(input.promptVersionId),input.feedbackId==null?null:Number(input.feedbackId),clean(input.type||'PROMPT',40),clean(input.source||'HUMAN_FEEDBACK',40),clean(input.title||'AI refinement proposal',250),JSON.stringify(proposed),'PENDING',clean(input.createdBy,150)||null]);
+  await db.execute('INSERT INTO AI_REFINEMENT_ITEM (ID,TENANT_ID,AUDIT_ID,BASE_PROMPT_VERSION_ID,PROMPT_VERSION_ID,FEEDBACK_ID,TYPE,SOURCE,TITLE,PROPOSED_CHANGE_JSON,STATUS,CREATED_BY) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',[id,input.tenantId,links.auditId,links.basePromptId,null,input.feedbackId==null?null:Number(input.feedbackId),clean(input.type||'PROMPT',40),clean(input.source||(input.feedbackId!=null?'FEEDBACK':'HUMAN_FEEDBACK'),40),clean(input.title||'AI refinement proposal',250),JSON.stringify(proposed),'PENDING',clean(input.createdBy,150)||null]);
   return get(input.tenantId,id);
 }
 async function review(tenantId,id,input={}){
@@ -49,7 +56,7 @@ async function review(tenantId,id,input={}){
 async function accept(tenantId,id,input={}){
   const idempotencyKey=clean(input.idempotencyKey,150)||null;
   return db.withTransaction(async tx=>{
-    const lockSql=db.dialect().lock('SELECT ID,TENANT_ID,AUDIT_ID,PROMPT_VERSION_ID,FEEDBACK_ID,TYPE,SOURCE,TITLE,PROPOSED_CHANGE_JSON,STATUS,CREATED_BY,REVIEWED_BY,CREATED_AT,REVIEWED_AT FROM AI_REFINEMENT_ITEM WHERE ID=? AND TENANT_ID=?');
+    const lockSql=db.dialect().lock('SELECT ID,TENANT_ID,AUDIT_ID,BASE_PROMPT_VERSION_ID,PROMPT_VERSION_ID,FEEDBACK_ID,TYPE,SOURCE,TITLE,PROPOSED_CHANGE_JSON,STATUS,CREATED_BY,REVIEWED_BY,CREATED_AT,REVIEWED_AT FROM AI_REFINEMENT_ITEM WHERE ID=? AND TENANT_ID=?');
     const rows=await tx.query(lockSql,[Number(id),tenantId]);
     const item=rows[0];
     if(!item)throw notFound('AI_REFINEMENT_NOT_FOUND');
@@ -63,7 +70,7 @@ async function accept(tenantId,id,input={}){
       if(existing[0]&&Number(existing[0].ID)!==Number(id))throw notFound('AI_REFINEMENT_IDEMPOTENCY_CONFLICT',409);
     }
     const proposal=parseJson(item.PROPOSED_CHANGE_JSON,{});
-    const base=item.PROMPT_VERSION_ID==null?await prompts.resolveTx(tx,tenantId):await prompts.resolveByIdTx(tx,tenantId,Number(item.PROMPT_VERSION_ID));
+    const base=item.BASE_PROMPT_VERSION_ID!=null?await prompts.resolveByIdTx(tx,tenantId,Number(item.BASE_PROMPT_VERSION_ID)):(item.PROMPT_VERSION_ID==null?await prompts.resolveTx(tx,tenantId):await prompts.resolveByIdTx(tx,tenantId,Number(item.PROMPT_VERSION_ID)));
     if(!base)throw notFound('AI_REFINEMENT_BASE_PROMPT_NOT_FOUND',409);
     const nextVersion=Number(base.VERSION_NO||0)+1;
     const basePrompt=parseJson(base.PROMPT_JSON,{});
@@ -71,7 +78,7 @@ async function accept(tenantId,id,input={}){
     const draftPrompt={...basePrompt,...patch};
     const promptId=await prompts.createTx(tx,{tenantId,versionNo:nextVersion,name:clean(input.name||('Refinement '+nextVersion),150),prompt:draftPrompt,status:'DRAFT'});
     await tx.execute("UPDATE AI_REFINEMENT_ITEM SET STATUS='ACCEPTED',PROMPT_VERSION_ID=?,ACCEPT_IDEMPOTENCY_KEY=?,REVIEWED_BY=?,REVIEWED_AT=CURRENT_TIMESTAMP WHERE ID=? AND TENANT_ID=? AND STATUS='REVIEWED'",[promptId,idempotencyKey,clean(input.reviewedBy,150)||null,Number(id),tenantId]);
-    const refinementRows=await tx.query('SELECT ID,TENANT_ID,AUDIT_ID,PROMPT_VERSION_ID,FEEDBACK_ID,TYPE,SOURCE,TITLE,PROPOSED_CHANGE_JSON,STATUS,ACCEPT_IDEMPOTENCY_KEY,CREATED_BY,REVIEWED_BY,CREATED_AT,REVIEWED_AT FROM AI_REFINEMENT_ITEM WHERE ID=? AND TENANT_ID=?',[Number(id),tenantId]);
+    const refinementRows=await tx.query('SELECT ID,TENANT_ID,AUDIT_ID,BASE_PROMPT_VERSION_ID,PROMPT_VERSION_ID,FEEDBACK_ID,TYPE,SOURCE,TITLE,PROPOSED_CHANGE_JSON,STATUS,ACCEPT_IDEMPOTENCY_KEY,CREATED_BY,REVIEWED_BY,CREATED_AT,REVIEWED_AT FROM AI_REFINEMENT_ITEM WHERE ID=? AND TENANT_ID=?',[Number(id),tenantId]);
     return {refinement:refinementRows[0],draft_prompt_id:promptId,base_prompt_id:Number(base.ID),next_version:nextVersion};
   });
 }
