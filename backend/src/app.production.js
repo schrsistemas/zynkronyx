@@ -12,25 +12,28 @@ const authRoutes = require('./routes/auth.basic');
 const deviceRegistryRoutes = require('./routes/device.registry.routes');
 const auditRoutes = require('./routes/audit.routes');
 const aiRoutes = require('./routes/ai.routes');
+const salesRoutes = require('./routes/sales.routes');
 
 const app = express();
 app.disable('x-powered-by');
 app.use((req,res,next)=>{res.setHeader('x-content-type-options','nosniff');res.setHeader('x-frame-options','DENY');res.setHeader('referrer-policy','no-referrer');res.setHeader('permissions-policy','camera=(),microphone=(),geolocation=()');next();});
-app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '1mb' }));
+app.use(express.json({limit:process.env.JSON_BODY_LIMIT||'1mb'}));
 app.use(rateLimit);
 app.use(correlation);
-
-app.get('/health', (_req,res)=>res.json({status:'ok',service:'zynkronyx',timestamp:new Date().toISOString(),database:db.driverName(),database_configured:process.env.DB_DATABASE?'configured':'not-configured'}));
-app.get('/ready', async (req,res)=>{
-  try { await db.health(); return res.json({ok:true,status:'ready',checks:{database:true},correlation_id:req.correlationId}); }
-  catch (error) { logger.warn({err:error,correlationId:req.correlationId},'Readiness database check failed'); return res.status(503).json({ok:false,status:'not_ready',checks:{database:false},error:'DATABASE_UNAVAILABLE',correlation_id:req.correlationId}); }
-});
-
-app.use('/auth',authRoutes); app.use(tenant);
-app.use('/sync',auth,syncRoutes); app.use('/integration',auth,deviceRoutes); app.use('/integration/devices',auth,deviceRegistryRoutes);
-app.use('/audit',auth,auditRoutes); app.use('/ai',auth,aiRoutes); app.use('/admin',auth,adminRoutes);
+app.get('/health',(_req,res)=>res.json({status:'ok',service:'zynkronyx',timestamp:new Date().toISOString(),database:db.driverName(),database_configured:process.env.DB_DATABASE?'configured':'not-configured'}));
+app.get('/ready',async(req,res)=>{try{await db.health();return res.json({ok:true,status:'ready',checks:{database:true},correlation_id:req.correlationId});}catch(error){logger.warn({err:error,correlationId:req.correlationId},'Readiness database check failed');return res.status(503).json({ok:false,status:'not_ready',checks:{database:false},error:'DATABASE_UNAVAILABLE',correlation_id:req.correlationId});}});
+app.use('/auth',authRoutes);
+app.use(tenant);
+app.use('/sync',auth,syncRoutes);
+app.use('/integration',auth,deviceRoutes);
+app.use('/integration/devices',auth,deviceRegistryRoutes);
+app.use('/audit',auth,auditRoutes);
+app.use('/ai',auth,aiRoutes);
+app.use('/sales',auth,salesRoutes);
+app.use('/admin',auth,adminRoutes);
 app.get('/metrics',(req,res)=>res.type('text/plain').send(['zynkronyx_requests_info 1','zynkronyx_ready '+(process.env.DB_DATABASE?'1':'0')].join('\n')+'\n'));
 app.use((req,res)=>res.status(404).json({erro:'Rota nao encontrada',correlation_id:req.correlationId}));
-app.use((err,req,res,next)=>{ logger.error({err,path:req.path,correlationId:req.correlationId,tenantId:req.tenant?.id},'Unhandled request error'); res.status(err.status||500).json({erro:err.message||'Erro interno',correlation_id:req.correlationId}); });
-function start(){const PORT=Number(process.env.PORT||3000); const server=app.listen(PORT,()=>logger.info({port:PORT},'API PROD rodando')); if(process.env.SYNC_PROCESSOR_ENABLED==='true') require('./processor/runner')(); return server;}
-if(require.main===module) start(); module.exports={app,start};
+app.use((err,req,res,next)=>{logger.error({err,path:req.path,correlationId:req.correlationId,tenantId:req.tenant?.id},'Unhandled request error');res.status(err.status||500).json({erro:err.message||'Erro interno',correlation_id:req.correlationId});});
+function start(){const PORT=Number(process.env.PORT||3000);const server=app.listen(PORT,()=>logger.info({port:PORT},'API PROD rodando'));if(process.env.SYNC_PROCESSOR_ENABLED==='true')require('./processor/runner')();return server;}
+if(require.main===module)start();
+module.exports={app,start};
