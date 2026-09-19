@@ -44,7 +44,7 @@ async function ingest(req, res) {
   }
 }
 router.post('/rag/documents', ingest);
-router.post('/rag/documents/preview', async (req,res)=>{try{return res.json({ok:true,correlation_id:req.correlationId,...await ai.rag.preview(req.body);});}catch(error){return res.status(error.status||500).json({ok:false,error:error.code||error.message||'RAG_PREVIEW_FAILED',correlation_id:req.correlationId});}});
+router.post('/rag/documents/preview', async (req,res)=>{try{return res.json({ok:true,correlation_id:req.correlationId,...await ai.rag.preview(req.body)});}catch(error){return res.status(error.status||500).json({ok:false,error:error.code||error.message||'RAG_PREVIEW_FAILED',correlation_id:req.correlationId});}});
 
 router.post('/rag/retrieve', async (req, res) => {
   try { const result = await ai.rag.retrieve(req, req.body); return res.json({ ok: true, correlation_id: req.correlationId, ...result }); }
