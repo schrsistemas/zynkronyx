@@ -15,8 +15,30 @@ function scoreLead(input){
   return {fit:Number(fit.toFixed(4)),intent:Number(intent.toFixed(4)),priority};
 }
 
+function scorePolicy(){
+  return {
+    version:String(process.env.SALES_SCORE_POLICY_VERSION||'v1'),
+    fitWeight:Number(process.env.SALES_FIT_WEIGHT||0.45),
+    intentWeight:Number(process.env.SALES_INTENT_WEIGHT||0.55)
+  };
+}
+function scoreLeadV2(input={}){
+  const policy=scorePolicy();
+  const icp=clamp(input.icp_score??input.fit_score);
+  const intentSignals=Array.isArray(input.intent_signals)?input.intent_signals:[];
+  const explicitIntent=input.intent_score==null?null:clamp(input.intent_score);
+  const signalIntent=intentSignals.length
+    ? clamp(intentSignals.reduce((sum,s)=>sum+clamp(s.score)*Math.max(Number(s.weight)||1,0),0)/intentSignals.reduce((sum,s)=>sum+Math.max(Number(s.weight)||1,0),0))
+    : 0;
+  const intent=explicitIntent==null?signalIntent:explicitIntent;
+  const priority=Number((icp*policy.fitWeight+intent*policy.intentWeight).toFixed(4));
+  return {fit:Number(icp.toFixed(4)),intent:Number(intent.toFixed(4)),priority,policy_version:policy.version};
+}
+
 exports.scoreLead=scoreLead;
+exports.scoreLeadV2=scoreLeadV2;
 exports.normalizeLead=normalizeLead;
+exports.scorePolicy=scorePolicy;
 
 exports.listLeads=(tenantId,limit)=>repo.listLeads(tenantId,Math.min(Math.max(Number(limit)||50,1),100));
 exports.getLead=(tenantId,id)=>repo.getLead(tenantId,Number(id));
@@ -36,9 +58,9 @@ exports.createLead=async(req,input)=>{
 exports.scoreLead=async(req,id,input)=>{
   const tenantId=req.tenant.id; const lead=await repo.getLead(tenantId,Number(id));
   if(!lead){const e=new Error('LEAD_NOT_FOUND');e.status=404;throw e;}
-  const score=scoreLead(input||{fit_score:lead.FIT_SCORE,intent_score:lead.INTENT_SCORE});
+  const score=scoreLeadV2(input||{fit_score:lead.FIT_SCORE,intent_score:lead.INTENT_SCORE});
   const updated=await repo.updateLeadScore(tenantId,Number(id),score);
-  await audit.record({tenantId,action:'SALES_LEAD_SCORED',result:'ALLOWED',correlationId:req.correlationId,metadata:{lead_id:Number(id),score}});
+  await audit.record({tenantId,action:'SALES_LEAD_SCORED',result:'ALLOWED',correlationId:req.correlationId,metadata:{lead_id:Number(id),score,policy_version:score.policy_version}});
   return updated;
 };
 
