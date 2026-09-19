@@ -4,7 +4,7 @@ import IntegrationsCenter from "../components/IntegrationsCenter";
 
 const RadarMap = dynamic(() => import("../components/RadarMap"), { ssr:false, loading:() => <div className="radarMap radarLoading">Carregando mapa operacional…</div> });
 
-const API = process.env.NEXT_PUBLIC_API_URL || "https://mute-grass-9428.schrsistemas.workers.dev";
+const API = (process.env.NEXT_PUBLIC_API_URL || "https://mute-grass-9428.schrsistemas.workers.dev").replace(/\/$/, "");
 const fallbackServices = [
   ["API Gateway", "unknown", "Worker"],
   ["Database", "planned", "Firebird"],
@@ -174,7 +174,7 @@ function Devices() {
 function Radar() {
  const [devices,setDevices]=useState([]); const [error,setError]=useState(null); const [loading,setLoading]=useState(false); const [type,setType]=useState(""); const [activeOnly,setActiveOnly]=useState(true); const [selected,setSelected]=useState(null);
  const auth=authHeaders();
- async function load(){setLoading(true);setError(null);try{const r=await fetch(API+"/integration/devices",{headers:auth,cache:"no-store"});const j=await r.json();if(!r.ok)throw new Error(j.erro||"Falha ao carregar radar");setDevices(j.devices||[])}catch(e){setError(e.message)}finally{setLoading(false)}} 
+ async function load(){setLoading(true);setError(null);try{const r=await fetch(API+"/integration/devices",{headers:auth,cache:"no-store"});const j=await r.json();if(!r.ok)throw new Error(j.message || j.erro || j.error || `API ${r.status}: Falha ao carregar radar`);setDevices(j.devices||[])}catch(e){setError(e.message)}finally{setLoading(false)}} 
  useEffect(()=>{load();const t=setInterval(load,30000);return()=>clearInterval(t)},[]);
  const visible=devices.filter(d=>(!activeOnly||d.STATUS==="A")&&(!type||d.DEVICE_TYPE===type)&&Number.isFinite(Number(d.LAST_LATITUDE))&&Number.isFinite(Number(d.LAST_LONGITUDE)));
  return <div>
