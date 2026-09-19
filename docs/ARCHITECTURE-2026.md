@@ -247,3 +247,46 @@ Manter decisões arquiteturais versionadas para:
 ## Regra principal
 
 Adicionar IA não significa colocar um chatbot dentro do ERP. A IA deve ser uma capacidade controlada da plataforma, com dados autorizados, evidências rastreáveis, contratos estáveis, limites operacionais e fallback determinístico.
+
+
+## 2026 Professional Engineering Maturity Roadmap
+
+### Objective
+Evolve Zynkronyx into a production-grade reference architecture for enterprise modernization, platform engineering, security, observability and AI engineering.
+
+### Engineering pillars
+1. **Architecture governance** — ADRs, explicit trade-offs, ownership, compatibility and rollback criteria.
+2. **Platform engineering** — reproducible environments, immutable artifacts, IaC, secrets management, progressive delivery and rollback.
+3. **Security** — threat modeling, least privilege, RBAC/ABAC, secret rotation, dependency/container scanning, SBOM and AI security controls.
+4. **Quality engineering** — unit, integration, contract, end-to-end, migration, performance and resilience testing.
+5. **SRE/observability** — SLIs, SLOs, error budgets, structured logs, metrics, traces, audit and actionable alerts.
+6. **Data architecture** — transactional source of truth, event-driven integration, CDC where justified, data quality and lineage.
+7. **AI engineering/LLMOps** — provider abstraction, RAG, evaluation, prompt/model versioning, cost/latency tracking, canary releases and rollback.
+8. **Business architecture** — every major technical capability must map to an operational outcome and measurable KPI.
+9. **Communication** — architecture diagrams, ADRs, runbooks, incident reports and technical decisions written for engineers and stakeholders.
+10. **Professional growth** — strengthen English technical communication and system-design interview readiness.
+
+### Definition of Done for architectural capabilities
+A capability is not considered production-ready when code merely works. It must have:
+- automated tests appropriate to the risk;
+- authorization and tenant isolation where applicable;
+- structured observability;
+- documented operational behavior;
+- deployment/release path;
+- rollback or recovery strategy;
+- security considerations;
+- measurable success criteria;
+- an ADR when the decision has meaningful architectural trade-offs.
+
+### Execution order
+**Phase A — Foundation:** ADR index, security baseline, request-scoped observability, API contracts, environment/secrets model.
+
+**Phase B — Reliability:** integration/contract/E2E tests, SLOs, provider resilience, queue retry/DLQ, migration verification.
+
+**Phase C — AI Engineering:** retrieval evaluation, groundedness, prompt/model cost telemetry, canary policy and automated release evidence.
+
+**Phase D — Platform:** IaC, immutable artifacts, SBOM/scanning, staging smoke tests, progressive delivery and production rollback.
+
+**Phase E — Modernization:** Delphi-to-API boundaries, outbox/event contracts, data architecture and incremental decomposition based on measured bottlenecks.
+
+**Phase F — Professionalization:** architecture portfolio, English technical documentation, system-design case studies and business KPI mapping.
