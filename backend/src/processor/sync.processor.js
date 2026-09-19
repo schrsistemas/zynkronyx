@@ -1,6 +1,6 @@
 const syncRepository = require('../repository/sync.repository');
 const syncHandlers = require('./sync.handler.registry');
-const db = require('../services/db.firebird.service');
+const db = require('../services/db.service');
 const crypto = require('node:crypto');
 
 class SyncProcessor {
