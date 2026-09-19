@@ -22,7 +22,7 @@ jobs:
 
       - name: Module load smoke test
         run: |
-          docker run --rm zynkronyx:production node -e "require('./src/app.production'); console.log('PRODUCTION_MODULE_LOAD_OK')"
+          timeout 30s docker run --rm zynkronyx:production node -e "require('./src/app.production'); console.log('PRODUCTION_MODULE_LOAD_OK')"
 
       - name: Runtime smoke test
         run: |
