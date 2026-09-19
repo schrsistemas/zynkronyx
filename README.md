@@ -1,7 +1,7 @@
 # Zynkronyx
 
 ## Objetivo
-Plataforma de sincronizacao de dados entre ERP (Delphi + Firebird) e dispositivos externos (mobile/API).
+Plataforma de sincronizacao de dados entre ERP (Delphi + configured transactional SGBD) e dispositivos externos (mobile/API).
 
 ## Problema
 ERPs tradicionais nao possuem mecanismo robusto de sincronizacao delta, controle de conflitos e rastreabilidade.
