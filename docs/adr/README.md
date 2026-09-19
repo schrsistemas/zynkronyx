@@ -13,7 +13,7 @@ ADRs capture decisions with meaningful architectural trade-offs. They are immuta
 - Metrics
 
 ## Current decision set
-- ADR-0001: Firebird remains transactional source of truth
+- ADR-0001: Configured transactional SGBD remains source of truth
 - ADR-0002: AI/RAG is a derived, rebuildable capability
 - ADR-0003: Provider abstraction for AI services
 - ADR-0004: Versioned prompts and evaluated promotion
