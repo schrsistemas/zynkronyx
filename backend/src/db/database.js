@@ -18,7 +18,7 @@ function getAdapter() {
   return adapter;
 }
 
-function dialect() { return getAdapter().dialect || { limit: (sql,n) => sql.replace(/^SELECT /i, 'SELECT ').replace(/^(SELECT .*?)( FROM )/is, '$1 FROM ') }; }
+function dialect() { const adapter = getAdapter(); if (!adapter.dialect) { const error = new Error('DATABASE_DIALECT_CONTRACT_MISSING'); error.code = 'DATABASE_DIALECT_CONTRACT_MISSING'; throw error; } return adapter.dialect; }
 
 async function nextId(resource) { return getAdapter().nextId(resource); }
 
