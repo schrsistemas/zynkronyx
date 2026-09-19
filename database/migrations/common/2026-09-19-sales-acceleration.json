@@ -2,19 +2,27 @@
   "version": 1,
   "purpose": "AI Sales Acceleration domain foundation",
   "sourceOfTruth": "configured-transactional-sgbd",
-  "entities": ["SALES_LEAD","SALES_OPPORTUNITY","SALES_ACTIVITY","SALES_NEXT_ACTION"],
+  "entities": [
+    "SALES_LEAD",
+    "SALES_OPPORTUNITY",
+    "SALES_ACTIVITY",
+    "SALES_NEXT_ACTION",
+    "SALES_SCORE_POLICY"
+  ],
   "requirements": {
     "tenantIsolation": true,
     "idempotentLeadCapture": true,
     "idempotentActivityIngestion": true,
     "humanApprovalForMutableAiActions": true,
     "auditability": true,
-    "aiRecommendationsAreDerived": true
+    "aiRecommendationsAreDerived": true,
+    "versionedScoring": true
   },
   "invariants": [
     "LLM recommendations never mutate CRM state directly",
     "Every mutable AI action requires explicit human approval",
     "Lead and activity external keys are unique within a tenant",
-    "All reads and writes are tenant scoped"
+    "All reads and writes are tenant scoped",
+    "Lead scores persist the scoring policy version that produced them"
   ]
 }
