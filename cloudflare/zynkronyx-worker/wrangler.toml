@@ -15,8 +15,3 @@ APP_NAME = "Zynkronyx"
 name = "zynkronyx-orchestration"
 binding = "ZYNKRONYX_ORCHESTRATION"
 class_name = "ZynkronyxOrchestration"
-
-[[workflows]]
-name = "zynkronyx-orchestration"
-binding = "ZYNKRONYX_ORCHESTRATION"
-class_name = "ZynkronyxOrchestration"
