@@ -1,4 +1,4 @@
-const db=require('./db.firebird.service');
+const db=require('./db.service');
 exports.list=async(tenantId,{limit=100,cursor=0,device_id,event_type,resultado,from,to,correlation_id}={})=>{
  const safeLimit=Math.max(1,Math.min(Number(limit)||100,500)); const safeCursor=Math.max(0,Number(cursor)||0);
  const where=['TENANT_ID=?','ID>?']; const params=[tenantId,safeCursor];
