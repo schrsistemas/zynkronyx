@@ -1,7 +1,15 @@
 const crypto = require('node:crypto');
 
 function hash(value) { return crypto.createHash('sha256').update(String(value)).digest('hex'); }
-function normalize(content) { return String(content || '').replace(/\r\n/g, '\n').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim(); }
+function normalize(content) {
+  return String(content || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n[ \t]+/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
 function estimateTokens(content) { return Math.max(1, Math.ceil(String(content).split(/\s+/).filter(Boolean).length * 1.3)); }
 
 function chunkText(content, options = {}) {
