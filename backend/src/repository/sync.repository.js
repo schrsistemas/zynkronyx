@@ -1,5 +1,5 @@
 const crypto = require('node:crypto');
-const db = require('../services/db.firebird.service');
+const db = require('../services/db.service');
 
 function stablePayload(item) {
   return JSON.stringify(item.dados ?? item.payload ?? item);
