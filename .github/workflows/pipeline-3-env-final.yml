@@ -26,9 +26,7 @@ jobs:
 
       - run: |
           curl -f http://localhost:3000/health
-          curl -f -X POST http://localhost:3000/auth/login \
-            -H "Content-Type: application/json" \
-            -d '{"login":"ci"}'
+          curl -f -X POST http://localhost:3000/auth/login             -H "Content-Type: application/json"             -d '{"login":"ci","password":"ci-password-123"}'
 
   staging:
     name: STAGING
@@ -40,7 +38,8 @@ jobs:
 
       - run: docker build --no-cache -f Dockerfile.prod.fix -t zynkronyx:staging .
 
-      - run: docker run -d -p 3001:3000 --name zstaging zynkronyx:staging
+      - run: |
+          docker run -d -p 3001:3000 --name zstaging             -e AUTH_LOGIN=ci             -e AUTH_PASSWORD=ci-password-123             -e AUTH_TOKEN=ci-token-0123456789-0123456789-012345             zynkronyx:staging
 
       - run: |
           for i in {1..30}; do
@@ -52,10 +51,7 @@ jobs:
 
       - run: |
           curl -f http://localhost:3001/health
-          curl -f -X POST http://localhost:3001/auth/login \
-            -H "Content-Type: application/json" \
-            -H "x-api-key: ci" \
-            -d '{"login":"ci"}'
+          curl -f -X POST http://localhost:3001/auth/login             -H "Content-Type: application/json"             -d '{"login":"ci","password":"ci-password-123"}'
 
   prod:
     name: PROD
