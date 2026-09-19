@@ -1,0 +1,6 @@
+const db=require('./db.firebird.service');
+async function nextId(){const r=await db.query('SELECT GEN_ID(GEN_AI_PROMPT_RELEASE_ID,1) AS ID FROM RDB$DATABASE');return Number(r[0].ID);}
+async function create(input){const id=await nextId();await db.execute('INSERT INTO AI_PROMPT_RELEASE (ID,TENANT_ID,PROMPT_VERSION_ID,BASELINE_VERSION_ID,MODE,STATUS,TRAFFIC_PERCENT,MIN_SCORE) VALUES (?,?,?,?,?,?,?,?)',[id,input.tenantId,input.promptVersionId,input.baselineVersionId||null,input.mode||'CANARY','RUNNING',Math.min(Math.max(Number(input.trafficPercent||10),1),100),input.minScore??Number(process.env.AI_PROMOTION_MIN_SCORE||0.8)]);return id;}
+async function list(tenantId){return db.query('SELECT ID,PROMPT_VERSION_ID,BASELINE_VERSION_ID,MODE,STATUS,TRAFFIC_PERCENT,MIN_SCORE,STARTED_AT,FINISHED_AT,RESULT_JSON FROM AI_PROMPT_RELEASE WHERE TENANT_ID=? ORDER BY STARTED_AT DESC,ID DESC',[tenantId]);}
+async function finish(tenantId,id,status,result){await db.execute('UPDATE AI_PROMPT_RELEASE SET STATUS=?,FINISHED_AT=CURRENT_TIMESTAMP,RESULT_JSON=? WHERE ID=? AND TENANT_ID=?',[status,JSON.stringify(result||{}),id,tenantId]);return{status,id};}
+module.exports={create,list,finish};
