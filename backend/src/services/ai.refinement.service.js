@@ -31,7 +31,7 @@ async function review(tenantId,id,input={}){
 }
 async function accept(tenantId,id,input={}){
   const item=await get(tenantId,id);
-  if(!['PENDING','REVIEWED'].includes(String(item.STATUS)))throw Object.assign(new Error('AI_REFINEMENT_NOT_ACCEPTABLE'),{status:409});
+  if(String(item.STATUS)!=='REVIEWED')throw Object.assign(new Error('AI_REFINEMENT_NOT_ACCEPTABLE'),{status:409});
   const proposal=parseJson(item.PROPOSED_CHANGE_JSON,{});
   const base=item.PROMPT_VERSION_ID==null?await prompts.resolve(tenantId):await prompts.resolveById(tenantId,Number(item.PROMPT_VERSION_ID));
   if(!base)throw Object.assign(new Error('AI_REFINEMENT_BASE_PROMPT_NOT_FOUND'),{status:409});
