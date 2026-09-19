@@ -13,6 +13,7 @@ const deviceRegistryRoutes = require('./routes/device.registry.routes');
 const auditRoutes = require('./routes/audit.routes');
 const aiRoutes = require('./routes/ai.routes');
 const salesRoutes = require('./routes/sales.routes');
+const fiscalRoutes = require('./routes/fiscal.routes');
 
 const app = express();
 app.disable('x-powered-by');
@@ -30,6 +31,7 @@ app.use('/integration/devices',auth,deviceRegistryRoutes);
 app.use('/audit',auth,auditRoutes);
 app.use('/ai',auth,aiRoutes);
 app.use('/sales',auth,salesRoutes);
+app.use('/fiscal',auth,fiscalRoutes);
 app.use('/admin',auth,adminRoutes);
 app.get('/metrics',(req,res)=>res.type('text/plain').send(['zynkronyx_requests_info 1','zynkronyx_ready '+(process.env.DB_DATABASE?'1':'0')].join('\n')+'\n'));
 app.use((req,res)=>res.status(404).json({erro:'Rota nao encontrada',correlation_id:req.correlationId}));
