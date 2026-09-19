@@ -53,6 +53,8 @@ async function withTransaction(work) {
   }
 }
 
+async function health() { await query('SELECT 1 AS OK FROM RDB$DATABASE'); return true; }
+
 async function execute(sql, params = []) {
   const db = await getConnection();
   return new Promise((resolve, reject) => {
@@ -64,4 +66,4 @@ async function execute(sql, params = []) {
   });
 }
 
-module.exports = { query, execute, withTransaction };
+module.exports = { query, execute, withTransaction, health };
