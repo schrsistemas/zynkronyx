@@ -53,6 +53,14 @@ async function withTransaction(work) {
   }
 }
 
+const dialect = {
+  name: 'firebird',
+  limit: (sql, n) => sql.replace(/^SELECT /i, 'SELECT FIRST ' + Number(n) + ' '),
+  currentTimestamp: 'CURRENT_TIMESTAMP',
+  contains: (column, placeholder) => `UPPER(${column}) CONTAINING ${placeholder}`,
+  lock: 'WITH LOCK'
+};
+
 async function nextId(resource) {
   const generators = { AI_DOCUMENT: 'GEN_AI_DOCUMENT_ID', AI_INGESTION_JOB: 'GEN_AI_INGESTION_JOB_ID', AI_DOCUMENT_CHUNK: 'GEN_AI_DOCUMENT_CHUNK_ID' };
   const generator = generators[resource];
@@ -74,4 +82,4 @@ async function execute(sql, params = []) {
   });
 }
 
-module.exports = { query, execute, withTransaction, health, nextId };
+module.exports = { query, execute, withTransaction, health, nextId, dialect };
