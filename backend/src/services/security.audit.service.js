@@ -1,5 +1,5 @@
 const crypto=require('node:crypto');
-const db=require('./db.firebird.service');
+const db=require('./db.service');
 function canonical(value){if(Array.isArray(value))return '['+value.map(canonical).join(',')+']';if(value&&typeof value==='object')return '{'+Object.keys(value).sort().map(k=>JSON.stringify(k)+':'+canonical(value[k])).join(',')+'}';return JSON.stringify(value);}
 function eventHash(input){return crypto.createHash('sha256').update(canonical(input)).digest('hex');}
 exports.record=async({tenantId,deviceId=null,action,result,correlationId,metadata={}})=>{
