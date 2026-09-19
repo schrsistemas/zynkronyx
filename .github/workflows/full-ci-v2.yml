@@ -24,7 +24,7 @@ jobs:
       - name: Start backend
         run: |
           cd backend
-          node src/app.production.js &
+          node src/app.ci.js > /tmp/zynkronyx.log 2>&1 &
 
       - name: Wait for API (retry)
         run: |
@@ -44,3 +44,4 @@ jobs:
         if: failure()
         run: |
           ps aux | grep node || true
+          cat /tmp/zynkronyx.log 2>/dev/null || true
