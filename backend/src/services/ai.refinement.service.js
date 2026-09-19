@@ -13,7 +13,7 @@ async function get(tenantId,id){
 }
 async function list(tenantId,limit=50){
   const n=Math.min(Math.max(Number(limit||50),1),100);
-  const sql=db.dialect().limit('SELECT ID,AUDIT_ID,PROMPT_VERSION_ID,FEEDBACK_ID,TYPE,SOURCE,TITLE,PROPOSED_CHANGE_JSON,STATUS,CREATED_BY,REVIEWED_BY,CREATED_AT,REVIEWED_AT FROM AI_REFINEMENT_ITEM WHERE TENANT_ID=? ORDER BY CREATED_AT DESC,ID DESC',n);
+  const sql=db.dialect().limit('SELECT ID,AUDIT_ID,BASE_PROMPT_VERSION_ID,PROMPT_VERSION_ID,FEEDBACK_ID,TYPE,SOURCE,TITLE,PROPOSED_CHANGE_JSON,STATUS,ACCEPT_IDEMPOTENCY_KEY,CREATED_BY,REVIEWED_BY,CREATED_AT,REVIEWED_AT FROM AI_REFINEMENT_ITEM WHERE TENANT_ID=? ORDER BY CREATED_AT DESC,ID DESC',n);
   return db.query(sql,[tenantId]);
 }
 async function validateLinks(input){
@@ -56,12 +56,12 @@ async function review(tenantId,id,input={}){
 async function accept(tenantId,id,input={}){
   const idempotencyKey=clean(input.idempotencyKey,150)||null;
   return db.withTransaction(async tx=>{
-    const lockSql=db.dialect().lock('SELECT ID,TENANT_ID,AUDIT_ID,BASE_PROMPT_VERSION_ID,PROMPT_VERSION_ID,FEEDBACK_ID,TYPE,SOURCE,TITLE,PROPOSED_CHANGE_JSON,STATUS,CREATED_BY,REVIEWED_BY,CREATED_AT,REVIEWED_AT FROM AI_REFINEMENT_ITEM WHERE ID=? AND TENANT_ID=?');
+    const lockSql=db.dialect().lock('SELECT ID,TENANT_ID,AUDIT_ID,BASE_PROMPT_VERSION_ID,PROMPT_VERSION_ID,FEEDBACK_ID,TYPE,SOURCE,TITLE,PROPOSED_CHANGE_JSON,STATUS,ACCEPT_IDEMPOTENCY_KEY,CREATED_BY,REVIEWED_BY,CREATED_AT,REVIEWED_AT FROM AI_REFINEMENT_ITEM WHERE ID=? AND TENANT_ID=?');
     const rows=await tx.query(lockSql,[Number(id),tenantId]);
     const item=rows[0];
     if(!item)throw notFound('AI_REFINEMENT_NOT_FOUND');
     if(String(item.STATUS)==='ACCEPTED'){
-      if(idempotencyKey&&String(item.ACCEPT_IDEMPOTENCY_KEY||'')===idempotencyKey)return {refinement:item,draft_prompt_id:Number(item.PROMPT_VERSION_ID),base_prompt_id:null,next_version:null,idempotent:true};
+      if(idempotencyKey&&String(item.ACCEPT_IDEMPOTENCY_KEY||'')===idempotencyKey)return {refinement:item,draft_prompt_id:Number(item.PROMPT_VERSION_ID),base_prompt_id:item.BASE_PROMPT_VERSION_ID==null?null:Number(item.BASE_PROMPT_VERSION_ID),next_version:null,idempotent:true};
       throw notFound('AI_REFINEMENT_NOT_ACCEPTABLE',409);
     }
     if(String(item.STATUS)!=='REVIEWED')throw notFound('AI_REFINEMENT_NOT_ACCEPTABLE',409);
