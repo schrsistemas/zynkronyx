@@ -1,9 +1,20 @@
 {
   "migration": "2026-09-19-ai-rag-foundation",
-  "version": 1,
+  "version": 2,
   "purpose": "AI/RAG governance foundation",
   "sourceOfTruth": "configured-transactional-sgbd",
-  "entities": ["AI_DOCUMENT","AI_DOCUMENT_CHUNK","AI_INGESTION_JOB","AI_QUERY_AUDIT","AI_EVAL_CASE","AI_EVAL_RUN","AI_PROMPT_VERSION","AI_PROMPT_RELEASE"],
+  "entities": [
+    "AI_DOCUMENT",
+    "AI_DOCUMENT_CHUNK",
+    "AI_INGESTION_JOB",
+    "AI_QUERY_AUDIT",
+    "AI_EVAL_CASE",
+    "AI_EVAL_RUN",
+    "AI_PROMPT_VERSION",
+    "AI_PROMPT_RELEASE",
+    "AI_QUERY_FEEDBACK",
+    "AI_REFINEMENT_ITEM"
+  ],
   "requirements": {
     "tenantIsolation": true,
     "idempotentIngestion": true,
@@ -12,6 +23,8 @@
     "evaluation": true,
     "promptReleaseGovernance": true,
     "evaluationLineage": true,
-    "promotionMinimumSample": true
+    "promotionMinimumSample": true,
+    "productionFeedbackLoop": true,
+    "humanApprovalForPromptChanges": true
   }
 }
