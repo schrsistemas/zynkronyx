@@ -54,6 +54,7 @@ test('review only accepts reviewed or rejected',async()=>{
 test('accept creates a new draft and never activates it',async()=>{
   const {service,state}=loadService();
   const item=await service.create({tenantId:10,promptVersionId:7,title:'x',suggestedChange:{tone:'concise'}});
+  await service.review(10,item.ID,{status:'REVIEWED',reviewedBy:'u2'});
   const result=await service.accept(10,item.ID,{reviewedBy:'u2'});
   assert.equal(result.draft_prompt_id,8);
   assert.equal(result.base_prompt_id,7);
@@ -66,6 +67,7 @@ test('accept creates a new draft and never activates it',async()=>{
 test('accepted refinement cannot be accepted twice',async()=>{
   const {service}=loadService();
   const item=await service.create({tenantId:10,title:'x'});
+  await service.review(10,item.ID,{status:'REVIEWED',reviewedBy:'u2'});
   await service.accept(10,item.ID,{reviewedBy:'u2'});
   await assert.rejects(()=>service.accept(10,item.ID,{reviewedBy:'u3'}),/AI_REFINEMENT_NOT_ACCEPTABLE/);
 });
