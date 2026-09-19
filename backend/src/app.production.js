@@ -2,6 +2,7 @@ const express = require('express');
 const crypto = require('node:crypto');
 
 const logger = require('./utils/logger');
+const correlation = require('./middleware/correlation.middleware');
 const rateLimit = require('./middleware/rateLimit.middleware');
 const tenant = require('./middleware/tenant');
 const auth = require('./middleware/auth.basic');
@@ -19,6 +20,7 @@ const app = express();
 app.disable('x-powered-by');
 app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '1mb' }));
 app.use(rateLimit);
+app.use(correlation);
 
 app.get('/health', (req, res) => res.json({
   status: 'ok',

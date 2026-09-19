@@ -1,14 +1,14 @@
 const express = require('express');
+const ai = require('../services/ai.service');
 
 const router = express.Router();
 
-function enabled(name) {
-  return String(process.env[name] || '').toLowerCase() === 'true';
-}
+
 
 router.get('/status', (req, res) => {
-  const llm = enabled('AI_ENABLED') && Boolean(process.env.AI_PROVIDER);
-  const rag = enabled('RAG_ENABLED');
+  const state = ai.status();
+  const llm = state.enabled && Boolean(state.provider);
+  const rag = state.rag.enabled;
   res.json({
     ok: true,
     service: 'zynkronyx-ai',
@@ -19,7 +19,7 @@ router.get('/status', (req, res) => {
     },
     rag: {
       enabled: rag,
-      topK: Number(process.env.RAG_TOP_K || 8)
+      topK: state.rag.topK
     },
     safeguards: {
       tenantIsolation: true,
@@ -31,7 +31,7 @@ router.get('/status', (req, res) => {
 });
 
 router.post('/query', async (req, res) => {
-  if (!enabled('AI_ENABLED')) {
+  if (!ai.config.enabled()) {
     return res.status(503).json({
       ok: false,
       error: 'AI_NOT_CONFIGURED',
@@ -47,11 +47,7 @@ router.post('/query', async (req, res) => {
     });
   }
 
-  return res.status(501).json({
-    ok: false,
-    error: 'AI_PIPELINE_NOT_ENABLED',
-    message: 'O contrato de consulta está reservado para o pipeline RAG/LLM versionado.'
-  });
+  try { await ai.query(req.body, req); } catch (error) { return res.status(error.status || 500).json({ ok:false, error:error.message || 'AI_QUERY_FAILED', correlation_id:req.correlationId }); }
 });
 
 module.exports = router;
