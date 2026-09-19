@@ -200,6 +200,24 @@ function Radar() {
 }
 
 
+function AIRefinementQueue({authVersion}) {
+ const [items,setItems]=useState([]),[error,setError]=useState(null),[loading,setLoading]=useState(false),[busy,setBusy]=useState(null);
+ const auth=authHeaders();
+ async function load(){setLoading(true);setError(null);try{const r=await fetch(API+"/ai/refinement?limit=50",{headers:auth,cache:"no-store"});const j=await r.json();if(!r.ok)throw new Error(j.error||j.erro||"Falha ao consultar refinement");setItems(j.results||[])}catch(e){setError(e.message)}finally{setLoading(false)}}
+ async function review(id,status){setBusy(id+status);setError(null);try{const r=await fetch(API+"/ai/refinement/"+id+"/review",{method:"POST",headers:{"Content-Type":"application/json",...auth},body:JSON.stringify({status})});const j=await r.json();if(!r.ok)throw new Error(j.error||j.erro||"Falha ao revisar refinement");await load()}catch(e){setError(e.message)}finally{setBusy(null)}}
+ async function accept(id){setBusy("accept"+id);setError(null);try{const r=await fetch(API+"/ai/refinement/"+id+"/accept",{method:"POST",headers:{"Content-Type":"application/json",...auth,"Idempotency-Key":"cc-refinement-"+id},body:JSON.stringify({name:"Refined prompt from Control Center"})});const j=await r.json();if(!r.ok)throw new Error(j.error||j.erro||"Falha ao aceitar refinement");await load()}catch(e){setError(e.message)}finally{setBusy(null)}}
+ useEffect(()=>{load()},[authVersion]);
+ return <div className="panel"><div className="sectionTitle"><h3>Refinement queue</h3><button onClick={load}>{loading?"Atualizando…":"Atualizar"}</button></div>
+  <p className="lead">Feedback convertido em propostas versionadas. Mudanças permanecem sob aprovação humana.</p>
+  {error&&<div className="resultBox">{error}</div>}
+  {!items.length&&!loading?<div className="emptyState"><h2>Fila vazia</h2><p>Nenhuma proposta retornada pela API.</p></div>:items.map(x=><div className="row" key={x.ID}>
+   <div><strong>{x.TITLE}</strong><small>{x.TYPE} · {x.SOURCE} · base prompt {x.BASE_PROMPT_VERSION_ID||"—"} · feedback {x.FEEDBACK_ID||"—"}</small><small>{x.STATUS} · {x.CREATED_AT||"—"} · {x.REVIEWED_BY||"—"}</small></div>
+   <span className="status">{x.STATUS}</span>
+   <div>{x.STATUS==="PENDING"&&<><button disabled={busy===x.ID+"REVIEWED"} onClick={()=>review(x.ID,"REVIEWED")}>Revisar</button>{" "}<button disabled={busy==="accept"+x.ID} onClick={()=>accept(x.ID)}>Aceitar</button></>}{x.STATUS==="REVIEWED"&&<button disabled={busy==="accept"+x.ID} onClick={()=>accept(x.ID)}>Aceitar</button>}{x.STATUS==="PENDING"&&<button disabled={busy===x.ID+"REJECTED"} onClick={()=>review(x.ID,"REJECTED")}>Rejeitar</button>}</div>
+  </div>)}
+ </div>;
+}
+
 function AIGovernanceOverview({authVersion}) {
  const [data,setData]=useState({eval:[],feedback:[],refinement:[],releases:[],audit:[]}),[error,setError]=useState(null),[loading,setLoading]=useState(false);
  async function load(){setLoading(true);setError(null);try{const h={headers:authHeaders(),cache:"no-store"};const urls=["/ai/eval/cases","/ai/feedback/summary","/ai/refinement","/ai/releases","/ai/audit"];const rs=await Promise.all(urls.map(u=>fetch(API+u,h)));const js=await Promise.all(rs.map(r=>r.json()));const bad=rs.findIndex(r=>!r.ok);if(bad>=0)throw new Error(js[bad].error||js[bad].erro||"Falha ao carregar governança");setData({eval:js[0].results||[],feedback:js[1].results||[],refinement:js[2].results||[],releases:js[3].results||[],audit:js[4].results||[]})}catch(e){setError(e.message)}finally{setLoading(false)}}
@@ -273,6 +291,7 @@ function AICenter({authVersion}) {
   </div>
   <AIPromotionLineage authVersion={authVersion}/>
   <AIGovernanceOverview authVersion={authVersion}/>
+  <AIRefinementQueue authVersion={authVersion}/>
   <div className="panel">
    <div className="sectionTitle"><h3>Consulta controlada</h3><span>Tenant + authorization + audit</span></div>
    <form className="securityForm" onSubmit={ask}>
