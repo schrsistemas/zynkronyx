@@ -1,4 +1,4 @@
-const db = require('./db.firebird.service');
+const db = require('./db.service');
 
 module.exports = {
   async processOut() {
