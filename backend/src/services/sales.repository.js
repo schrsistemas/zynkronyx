@@ -10,7 +10,7 @@ exports.findLeadByKey=async(tenantId,key)=>{const rows=await db.query('SELECT * 
 
 exports.insertLead=async(input)=>{const id=await nextId('SALES_LEAD');await db.execute('INSERT INTO SALES_LEAD (ID,TENANT_ID,EXTERNAL_KEY,NAME,EMAIL,COMPANY,SOURCE,STATUS,METADATA) VALUES (?,?,?,?,?,?,?,?,?)',[id,input.tenantId,input.externalKey,input.name,input.email||null,input.company||null,input.source||null,input.status||'NEW',JSON.stringify(input.metadata||{})]);return exports.getLead(input.tenantId,id);};
 
-exports.updateLeadScore=async(tenantId,id,score)=>{await db.execute('UPDATE SALES_LEAD SET FIT_SCORE=?,INTENT_SCORE=?,PRIORITY_SCORE=?,UPDATED_AT='+now()+' WHERE TENANT_ID=? AND ID=?',[score.fit,score.intent,score.priority,tenantId,id]);return exports.getLead(tenantId,id);};
+exports.updateLeadScore=async(tenantId,id,score)=>{await db.execute('UPDATE SALES_LEAD SET FIT_SCORE=?,INTENT_SCORE=?,PRIORITY_SCORE=?,SCORE_POLICY_VERSION=?,UPDATED_AT='+now()+' WHERE TENANT_ID=? AND ID=?',[score.fit,score.intent,score.priority,score.policy_version||'v1',tenantId,id]);return exports.getLead(tenantId,id);};
 
 exports.listOpportunities=async tenantId=>db.query('SELECT * FROM SALES_OPPORTUNITY WHERE TENANT_ID=? ORDER BY UPDATED_AT DESC',[tenantId]);
 exports.getOpportunity=async(tenantId,id)=>{const rows=await db.query('SELECT * FROM SALES_OPPORTUNITY WHERE TENANT_ID=? AND ID=?',[tenantId,id]);return rows[0]||null;};
