@@ -9,8 +9,8 @@ const router = express.Router();
 function requireAiGovernance(req,res,next){
   const configured=String(process.env.AI_GOVERNANCE_USERS||'').split(',').map((v)=>v.trim()).filter(Boolean);
   const userId=String(req.user?.id||'');
-  if(configured.length && !configured.includes(userId)) return res.status(403).json({ok:false,error:'AI_GOVERNANCE_FORBIDDEN',correlation_id:req.correlationId});
-  if(!req.user?.id) return res.status(403).json({ok:false,error:'AI_GOVERNANCE_FORBIDDEN',correlation_id:req.correlationId});
+  if(!configured.length) return res.status(503).json({ok:false,error:'AI_GOVERNANCE_NOT_CONFIGURED',correlation_id:req.correlationId});
+  if(!configured.includes(userId)) return res.status(403).json({ok:false,error:'AI_GOVERNANCE_FORBIDDEN',correlation_id:req.correlationId});
   return next();
 }
 
