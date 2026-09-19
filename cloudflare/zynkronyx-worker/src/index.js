@@ -1,7 +1,7 @@
-const VERSION = "0.3.0";
+const VERSION = "0.3.1";
 
 const PUBLIC_HEADERS = {
-  "access-control-allow-origin": "*",
+  "access-control-allow-origin": "https://zynkronyx-control-center.pages.dev",
   "access-control-allow-methods": "GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS",
   "access-control-allow-headers": "Authorization,Content-Type,X-API-Key,X-Device-Id,X-Device-Credential,X-Correlation-Id",
   "cache-control": "no-store",
