@@ -28,11 +28,12 @@ async function ingest(req, input = {}) {
   const chunks = chunkText(content, { maxChars: input.chunk_max_chars, overlap: input.chunk_overlap });
   return repository.createIngestion({ tenantId, sourceType, externalKey, title, checksum: checksum(content), classification, aclJson, metadataJson, correlationId: req.correlationId, idempotencyKey, chunks });
 }
+async function preview(input = {}) { const content=String(input.content||''); if(!content.trim()){const e=new Error('DOCUMENT_CONTENT_REQUIRED');e.status=400;throw e;} return {content_length:content.length,checksum:checksum(content),chunks:chunkText(content,{maxChars:input.chunk_max_chars,overlap:input.chunk_overlap})}; }
 async function retrieve(req, input = {}) {
   const tenantId = requireTenant(req);
   const query = String(input.query || '').trim();
   if (!query) { const e = new Error('QUERY_REQUIRED'); e.status = 400; throw e; }
   const topK = Math.min(Math.max(Number(input.top_k || 8), 1), 50);
-  return { tenant_id: tenantId, query, top_k: topK, results: [], stage: 'RETRIEVAL_PROVIDER_NOT_CONNECTED', safe: true };
+  const results=await repository.lexicalRetrieve(tenantId,query,topK); return { tenant_id: tenantId, query, top_k: topK, results, stage: 'LEXICAL_FALLBACK', safe: true, derived: true };
 }
-module.exports = { ingest, registerDocument: ingest, retrieve, checksum };
+module.exports = { ingest, registerDocument: ingest, preview, retrieve, checksum };
