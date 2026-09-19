@@ -2,9 +2,9 @@
 
 const requests = {};
 
-setInterval(() => {
+const resetTimer = setInterval(() => {
   for (const k in requests) requests[k] = 0;
-}, 60000);
+}, 60000);\nresetTimer.unref?.();
 
 module.exports = (req, res, next) => {
   const key = req.headers['x-api-key'] || 'anon';
