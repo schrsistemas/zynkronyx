@@ -1,6 +1,6 @@
 {
   "migration": "2026-09-19-ai-rag-foundation",
-  "version": 2,
+  "version": 3,
   "purpose": "AI/RAG governance foundation",
   "sourceOfTruth": "configured-transactional-sgbd",
   "entities": [
@@ -25,6 +25,9 @@
     "evaluationLineage": true,
     "promotionMinimumSample": true,
     "productionFeedbackLoop": true,
-    "humanApprovalForPromptChanges": true
+    "humanApprovalForPromptChanges": true,
+    "feedbackIdempotency": true,
+    "feedbackRefinementLineage": true,
+    "promptRefinementBaseLineage": true
   }
 }
