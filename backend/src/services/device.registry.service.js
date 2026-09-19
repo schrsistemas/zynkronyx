@@ -1,5 +1,5 @@
 const crypto = require('node:crypto');
-const db = require('./db.firebird.service');
+const db = require('./db.service');
 
 function tokenHash(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
