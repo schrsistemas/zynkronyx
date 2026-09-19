@@ -1,53 +1,45 @@
 const express = require('express');
 const ai = require('../services/ai.service');
-
 const router = express.Router();
 
-
-
 router.get('/status', (req, res) => {
-  const state = ai.status();
-  const llm = state.enabled && Boolean(state.provider);
-  const rag = state.rag.enabled;
-  res.json({
-    ok: true,
-    service: 'zynkronyx-ai',
-    llm: {
-      enabled: llm,
-      provider: process.env.AI_PROVIDER || null,
-      model: process.env.AI_MODEL || null
-    },
-    rag: {
-      enabled: rag,
-      topK: state.rag.topK
-    },
-    safeguards: {
-      tenantIsolation: true,
-      auditRequired: true,
-      sqlGeneration: false,
-      mutableActionsRequireAuthorization: true
-    }
-  });
+  res.json({ ok: true, service: 'zynkronyx-ai', ...ai.status(req) });
 });
 
 router.post('/query', async (req, res) => {
-  if (!ai.config.enabled()) {
-    return res.status(503).json({
-      ok: false,
-      error: 'AI_NOT_CONFIGURED',
-      message: 'IA desativada. Configure AI_ENABLED e um provider antes de habilitar consultas.'
+  try {
+    const result = await ai.query(req.body, req);
+    return res.json({ ok: true, correlation_id: req.correlationId, ...result });
+  } catch (error) {
+    return res.status(error.status || 500).json({
+      ok: false, error: error.code || error.message || 'AI_QUERY_FAILED',
+      correlation_id: req.correlationId
     });
   }
+});
 
-  if (!process.env.AI_PROVIDER) {
-    return res.status(503).json({
-      ok: false,
-      error: 'AI_PROVIDER_NOT_CONFIGURED',
-      message: 'Nenhum provider de LLM configurado.'
+router.post('/rag/documents/preview', async (req, res) => {
+  try {
+    const result = await ai.rag.registerDocument(req, req.body);
+    return res.status(202).json({ ok: true, correlation_id: req.correlationId, ...result });
+  } catch (error) {
+    return res.status(error.status || 500).json({
+      ok: false, error: error.message || 'RAG_DOCUMENT_FAILED',
+      correlation_id: req.correlationId
     });
   }
+});
 
-  try { await ai.query(req.body, req); } catch (error) { return res.status(error.status || 500).json({ ok:false, error:error.message || 'AI_QUERY_FAILED', correlation_id:req.correlationId }); }
+router.post('/rag/retrieve', async (req, res) => {
+  try {
+    const result = await ai.rag.retrieve(req, req.body);
+    return res.json({ ok: true, correlation_id: req.correlationId, ...result });
+  } catch (error) {
+    return res.status(error.status || 500).json({
+      ok: false, error: error.message || 'RAG_RETRIEVAL_FAILED',
+      correlation_id: req.correlationId
+    });
+  }
 });
 
 module.exports = router;
