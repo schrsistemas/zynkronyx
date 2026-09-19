@@ -1,0 +1,1 @@
+const test=require('node:test');const assert=require('node:assert/strict');const repo=require('../src/services/rag.repository');test('RAG repository exposes ingestion and worker lifecycle',()=>{assert.equal(typeof repo.createIngestion,'function');assert.equal(typeof repo.claimNextJob,'function');assert.equal(typeof repo.finishJob,'function');});
