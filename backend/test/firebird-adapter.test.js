@@ -1,12 +1,13 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-test('Firebird adapter exposes transactional contract', async () => {
-  const db = require('../src/services/db.firebird.service');
+test('database service exposes generic transactional contract', async () => {
+  const db = require('../src/services/db.service');
   assert.equal(typeof db.query, 'function');
   assert.equal(typeof db.execute, 'function');
   assert.equal(typeof db.withTransaction, 'function');
-  assert.equal(typeof db.transaction, 'undefined');
+  assert.equal(typeof db.nextId, 'function');
+  assert.equal(typeof db.driverName, 'function');
 });
 
 test('sync repository exposes transaction-aware staging insert', async () => {
