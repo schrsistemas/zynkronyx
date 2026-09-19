@@ -12,7 +12,7 @@ async function create(input){
   const candidate=await prompts.getById(input.tenantId,Number(input.promptVersionId));
   if(Number(candidate.TENANT_ID)!==Number(input.tenantId)){const e=new Error('AI_RELEASE_PROMPT_TENANT_MISMATCH');e.status=409;throw e;}
   if(String(candidate.STATUS)==='ACTIVE'){const e=new Error('AI_RELEASE_CANDIDATE_ALREADY_ACTIVE');e.status=409;throw e;}
-  const gate=await prompts.promotionGate(input.tenantId,Number(input.promptVersionId));
+  const gate=await prompts.evaluationGate(input.tenantId,Number(input.promptVersionId));
   const id=await db.nextId('AI_PROMPT_RELEASE');
   const mode=String(input.mode||process.env.AI_CANARY_MODE||'TENANT_CANARY').trim().toUpperCase();
   const traffic=Math.min(Math.max(Number(input.trafficPercent??10),0),100);
