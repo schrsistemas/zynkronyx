@@ -7,7 +7,7 @@ const RadarMap = dynamic(() => import("../components/RadarMap"), { ssr:false, lo
 const API = process.env.NEXT_PUBLIC_API_URL || "https://mute-grass-9428.schrsistemas.workers.dev";
 const fallbackServices = [
   ["API Gateway", "unknown", "Worker"],
-  ["Database", "planned", "Firebird"],
+  ["Database", "planned", "Configured SGBD"],
   ["Observability", "planned", "Logs / Metrics"],
   ["DelphiDBUtils", "development", "FireDAC"],
 ];
@@ -63,6 +63,7 @@ export default function Home() {
           <Nav active={section==="monitoring"} onClick={()=>setSection("monitoring")} icon="◉">Monitoring</Nav>
           <Nav active={section==="security"} onClick={()=>setSection("security")} icon="⌑">Security</Nav>
           <Nav active={section==="ai"} onClick={()=>setSection("ai")} icon="✦">AI / RAG</Nav>
+          <Nav active={section==="sales"} onClick={()=>setSection("sales")} icon="◫">AI Sales</Nav>
           <Nav active={section==="radar"} onClick={()=>setSection("radar")} icon="⌖">Radar</Nav>
           <Nav active={section==="devices"} onClick={()=>setSection("devices")} icon="⌁">Devices</Nav>
           <Nav active={section==="integrations"} onClick={()=>setSection("integrations")} icon="⚙">Integrations</Nav>
@@ -85,6 +86,7 @@ export default function Home() {
         {section === "monitoring" && <Monitoring status={status} latency={latency}/>} 
         {section === "security" && <Security onAuth={()=>setAuthVersion(v=>v+1)}/>}
         {section === "ai" && <AICenter authVersion={authVersion}/>}
+        {section === "sales" && <SalesCenter authVersion={authVersion}/>}
         {section === "radar" && <Radar/>}
         {section === "devices" && <Devices/>}
         {section === "integrations" && <IntegrationsCenter/>}
@@ -97,7 +99,7 @@ export default function Home() {
 }
 
 function Nav({active,onClick,icon,children}) { return <button className={active?"active":""} onClick={onClick}>{icon} <span>{children}</span></button>; }
-function title(s) { return ({overview:"System Overview",services:"Services",api:"API Explorer",database:"Database",sync:"Synchronization",devices:"Device Integrations",audit:"Legal Audit",deploy:"Deployments",docs:"Documentation",integrations:"Integrations & Simulator",monitoring:"Monitoring",radar:"Radar Visual",security:"Security",ai:"AI / RAG"})[s] || "Zynkronyx"; }
+function title(s) { return ({overview:"System Overview",services:"Services",api:"API Explorer",database:"Database",sync:"Synchronization",devices:"Device Integrations",audit:"Legal Audit",deploy:"Deployments",docs:"Documentation",integrations:"Integrations & Simulator",monitoring:"Monitoring",radar:"Radar Visual",security:"Security",ai:"AI / RAG",sales:"AI Sales"})[s] || "Zynkronyx"; }
 function authHeaders(){ if(typeof window==="undefined") return {}; const token=sessionStorage.getItem("zynkronyx_token"); const key=process.env.NEXT_PUBLIC_TENANT_API_KEY; return {...(key?{"x-api-key":key}:{}),...(token?{Authorization:"Bearer "+token}:{})}; }
 function findCapability(list,name) { return list.find(x => x.name === name); }
 
@@ -248,6 +250,26 @@ function AICenter({authVersion}) {
    <div className="row"><div><strong>SQL generation</strong><small>LLM não executa SQL gerado</small></div><span className="status">BLOCKED</span></div>
    <div className="row"><div><strong>Mutable actions</strong><small>Exigem autorização explícita</small></div><span className="status">AUTHORIZED</span></div>
   </div>
+ </div>;
+}
+
+function SalesCenter({authVersion}) {
+ const [leads,setLeads]=useState([]),[opps,setOpps]=useState([]),[error,setError]=useState(null),[loading,setLoading]=useState(false),[lead,setLead]=useState({name:"",email:"",company:"",source:"control-center"}),[selected,setSelected]=useState(null),[copilot,setCopilot]=useState(null);
+ const auth=authHeaders();
+ async function load(){setLoading(true);setError(null);try{const [lr,or]=await Promise.all([fetch(API+"/sales/leads",{headers:auth,cache:"no-store"}),fetch(API+"/sales/opportunities",{headers:auth,cache:"no-store"})]);const lj=await lr.json(),oj=await or.json();if(!lr.ok)throw new Error(lj.error||lj.erro||"Falha nos leads");if(!or.ok)throw new Error(oj.error||oj.erro||"Falha nas oportunidades");setLeads(lj.results||[]);setOpps(oj.results||[])}catch(e){setError(e.message)}finally{setLoading(false)}}
+ useEffect(()=>{load()},[authVersion]);
+ async function createLead(e){e.preventDefault();try{const r=await fetch(API+"/sales/leads",{method:"POST",headers:{"Content-Type":"application/json",...auth},body:JSON.stringify(lead)});const j=await r.json();if(!r.ok)throw new Error(j.error||j.erro||"Falha ao criar lead");setLead({name:"",email:"",company:"",source:"control-center"});load()}catch(e){setError(e.message)}}
+ async function recommend(id){try{const r=await fetch(API+"/sales/opportunities/"+id+"/next-action",{method:"POST",headers:{"Content-Type":"application/json",...auth},body:"{}"});const j=await r.json();if(!r.ok)throw new Error(j.error||j.erro||"Falha na recomendação");setSelected(j.recommendation)}catch(e){setError(e.message)}}
+ async function ask(id){try{const r=await fetch(API+"/sales/opportunities/"+id+"/copilot",{method:"POST",headers:{"Content-Type":"application/json",...auth},body:JSON.stringify({query:"Resuma o contexto comercial e indique lacunas e próxima ação."})});const j=await r.json();if(!r.ok)throw new Error(j.error||j.erro||"Falha no copilot");setCopilot(j)}catch(e){setError(e.message)}}
+ return <div>
+  <div className="hero"><div><span className="pill">AI SALES</span><h2>Aceleração Comercial</h2><p>Leads, oportunidades, sinais, próximas ações e copiloto com aprovação humana.</p></div><div className="heroVersion">{opps.length}<br/><small>oportunidades</small></div></div>
+  {error&&<div className="panel resultBox">{error}</div>}
+  <div className="panel"><div className="sectionTitle"><h3>Novo lead</h3><span>captura idempotente por tenant</span></div><form className="securityForm" onSubmit={createLead}><input placeholder="Nome" required value={lead.name} onChange={e=>setLead({...lead,name:e.target.value})}/><input placeholder="E-mail" value={lead.email} onChange={e=>setLead({...lead,email:e.target.value})}/><input placeholder="Empresa" value={lead.company} onChange={e=>setLead({...lead,company:e.target.value})}/><button type="submit">Criar lead</button></form></div>
+  <div className="stats"><Stat title="Leads" value={leads.length} note="tenant atual"/><Stat title="Oportunidades" value={opps.length} note="pipeline"/><Stat title="AI" value="ON" note="copilot/recommendations"/><Stat title="Mutação AI" value="APPROVAL" note="humano obrigatório"/></div>
+  <div className="panel"><div className="sectionTitle"><h3>Pipeline</h3><button onClick={load}>{loading?"Atualizando…":"Atualizar"}</button></div>{!opps.length?<div className="emptyState"><h2>Sem oportunidades</h2><p>Crie leads e oportunidades via API para alimentar o pipeline.</p></div>:opps.map(o=><div className="row" key={o.ID}><div><strong>{o.TITLE}</strong><small>Lead {o.LEAD_ID} · {o.STAGE} · {o.STATUS}</small></div><span className="status">{o.PROBABILITY==null?"—":Math.round(Number(o.PROBABILITY)*100)+"%"}</span><div><button onClick={()=>recommend(o.ID)}>Próxima ação</button><button onClick={()=>ask(o.ID)}>Copilot</button></div></div>)}</div>
+  {selected&&<div className="panel"><div className="sectionTitle"><h3>Recomendação</h3><button onClick={()=>setSelected(null)}>Fechar</button></div><pre className="resultBox">{JSON.stringify(selected,null,2)}</pre><small>A recomendação é derivada; nenhuma ação CRM é executada automaticamente.</small></div>}
+  {copilot&&<div className="panel"><div className="sectionTitle"><h3>Copilot comercial</h3><button onClick={()=>setCopilot(null)}>Fechar</button></div><pre className="resultBox">{JSON.stringify(copilot,null,2)}</pre></div>}
+  <div className="panel"><div className="row"><div><strong>Guardrail</strong><small>LLM somente recomenda; aprovação humana precede ação mutável.</small></div><span className="status">ENFORCED</span></div></div>
  </div>;
 }
 
