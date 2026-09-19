@@ -26,3 +26,18 @@
 
 ## Contract verification
 CI should exercise authentication, tenant isolation, correlation headers, protected-route behavior, and representative AI lifecycle endpoints without requiring an external LLM provider.
+## AI Sales API surface
+- GET /sales/leads
+- POST /sales/leads
+- POST /sales/leads/:id/score
+- GET /sales/opportunities
+- POST /sales/opportunities
+- GET /sales/opportunities/:id/activities
+- POST /sales/opportunities/:id/activities (requires idempotency_key)
+- POST /sales/opportunities/:id/next-action
+- GET /sales/opportunities/:id/next-actions
+- POST /sales/opportunities/:id/copilot
+- POST /sales/next-actions/:id/approve
+- POST /sales/next-actions/:id/complete
+
+Sales AI recommendations are derived outputs. The LLM/copilot cannot mutate CRM state directly. A mutable recommended action remains PROPOSED until explicitly approved by an authenticated human, and the approval/completion lifecycle is audited.
