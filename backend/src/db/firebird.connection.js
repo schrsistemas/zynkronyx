@@ -62,7 +62,7 @@ const dialect = {
 };
 
 async function nextId(resource) {
-  const generators = { AI_DOCUMENT: 'GEN_AI_DOCUMENT_ID', AI_INGESTION_JOB: 'GEN_AI_INGESTION_JOB_ID', AI_DOCUMENT_CHUNK: 'GEN_AI_DOCUMENT_CHUNK_ID' };
+  const generators = { AI_DOCUMENT: 'GEN_AI_DOCUMENT_ID', AI_INGESTION_JOB: 'GEN_AI_INGESTION_JOB_ID', AI_DOCUMENT_CHUNK: 'GEN_AI_DOCUMENT_CHUNK_ID', AI_QUERY_AUDIT: 'GEN_AI_QUERY_AUDIT_ID', AI_EVAL_CASE: 'GEN_AI_EVAL_CASE_ID', AI_EVAL_RUN: 'GEN_AI_EVAL_RUN_ID', AI_PROMPT_VERSION: 'GEN_AI_PROMPT_VERSION_ID', AI_PROMPT_RELEASE: 'GEN_AI_PROMPT_RELEASE_ID' };
   const generator = generators[resource];
   if (!generator) { const error = new Error('UNKNOWN_ID_RESOURCE: ' + resource); error.code = 'UNKNOWN_ID_RESOURCE'; throw error; }
   const rows = await query('SELECT GEN_ID(' + generator + ',1) AS ID FROM RDB$DATABASE');
