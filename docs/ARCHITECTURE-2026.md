@@ -41,14 +41,14 @@ Node/Express API         AI Gateway
 1. **Edge** — Cloudflare Worker, CORS, rate limiting, correlation ID, routing.
 2. **Application** — casos de uso, autenticação, autorização, idempotência, políticas.
 3. **Domain** — regras de sincronização, conflitos, dispositivos, integrações e auditoria.
-4. **Infrastructure** — Firebird/FireDAC, filas/outbox, armazenamento documental e provedores externos.
+4. **Infrastructure** — adapter do SGBD transacional/driver, filas/outbox, armazenamento documental e provedores externos.
 5. **AI platform** — ingestão, chunking, embeddings, retrieval, reranking, prompt assembly, LLM, guardrails e avaliação.
 6. **Observability** — logs estruturados, métricas, tracing, auditoria, SLOs e alertas.
 7. **Experience** — Control Center mobile-first; telas, tabelas, formulários e mapas devem funcionar primeiro em telas estreitas e touch, com desktop como progressive enhancement.
 
 ## RAG + LLM
 
-O RAG não deve consultar o Firebird diretamente a cada prompt.
+O RAG não deve consultar diretamente o SGBD transacional a cada prompt.
 
 Fluxo de ingestão:
 
