@@ -41,7 +41,7 @@ jobs:
       - name: Load fiscal route
         run: docker run --rm zynkronyx:test node -e "require('./src/routes/fiscal.routes'); console.log('FISCAL_ROUTE_OK')"
       - name: Load production app
-        run: docker run --rm zynkronyx:test node -e "require('./src/app.production'); console.log('PRODUCTION_APP_OK')"
+        run: timeout 30s docker run --rm zynkronyx:test node -e "require('./src/app.production'); console.log('PRODUCTION_APP_OK')"
       - name: Run container
         run: |
           docker run -d -p 3000:3000 --name ztest             -e AUTH_LOGIN=ci             -e AUTH_PASSWORD=ci-password-123             -e AUTH_TOKEN=ci-token-0123456789-0123456789-012345             zynkronyx:test
