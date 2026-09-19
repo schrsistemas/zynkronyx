@@ -1,4 +1,4 @@
-const db = require('../services/db.firebird.service');
+const db = require('../services/db.service');
 
 module.exports = async (req, res, next) => {
   const apiKey = req.headers['x-api-key'];
@@ -13,7 +13,7 @@ module.exports = async (req, res, next) => {
 
   try {
     const rows = await db.query(
-      `SELECT FIRST 1 ID, STATUS
+      `SELECT ID, STATUS
        FROM TENANT
        WHERE API_KEY = ?`,
       [apiKey]
