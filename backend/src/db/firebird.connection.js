@@ -53,6 +53,14 @@ async function withTransaction(work) {
   }
 }
 
+async function nextId(resource) {
+  const generators = { AI_DOCUMENT: 'GEN_AI_DOCUMENT_ID', AI_INGESTION_JOB: 'GEN_AI_INGESTION_JOB_ID', AI_DOCUMENT_CHUNK: 'GEN_AI_DOCUMENT_CHUNK_ID' };
+  const generator = generators[resource];
+  if (!generator) { const error = new Error('UNKNOWN_ID_RESOURCE: ' + resource); error.code = 'UNKNOWN_ID_RESOURCE'; throw error; }
+  const rows = await query('SELECT GEN_ID(' + generator + ',1) AS ID FROM RDB$DATABASE');
+  return Number(rows[0].ID);
+}
+
 async function health() { await query('SELECT 1 AS OK FROM RDB$DATABASE'); return true; }
 
 async function execute(sql, params = []) {
@@ -66,4 +74,4 @@ async function execute(sql, params = []) {
   });
 }
 
-module.exports = { query, execute, withTransaction, health };
+module.exports = { query, execute, withTransaction, health, nextId };
