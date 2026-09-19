@@ -72,6 +72,12 @@ Governance mutations require the configured AI governance authorization.
 - `GET /ai/eval/cases`
 - `POST /ai/eval/run`
 - `GET /ai/audit`
+- `POST /ai/feedback`
+- `GET /ai/feedback/summary`
+- `GET /ai/refinement`
+- `POST /ai/refinement`
+- `POST /ai/refinement/:id/review`
+- `POST /ai/refinement/:id/accept`
 - `GET /ai/releases`
 - `POST /ai/releases`
 - `POST /ai/releases/:id/rollback`
