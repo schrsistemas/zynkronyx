@@ -1,4 +1,4 @@
-const VERSION = "0.3.5";
+const VERSION = "0.3.6";
 const PUBLIC_ORIGIN = "https://zynkronyx-control-center.pages.dev";
 const PUBLIC_PATHS = new Set(["/", "/health", "/api/status", "/api/capabilities"]);
 const GATEWAY_PREFIXES = ["/auth", "/sync", "/integration", "/audit", "/ai", "/sales", "/fiscal", "/admin", "/metrics", "/ready"];
@@ -107,7 +107,7 @@ function publicResponse(request, path) {
       service: "zynkronyx-gateway",
       status: "healthy",
       version: VERSION,
-      backend: "configured",
+      backend: env?.BACKEND_URL ? "configured" : "not-configured",
       timestamp: now(),
     }, 200, request);
   }
