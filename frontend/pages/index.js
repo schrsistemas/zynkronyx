@@ -64,9 +64,9 @@ function LgpdAcceptance() {
       <h2 id="lgpd-title">Aviso de privacidade</h2>
       <p>Antes de continuar, consulte o aviso de privacidade vigente do Zynkronyx. O aceite técnico registra a versão do aviso e a evidência da ação.</p>
       <p className="lgpdMeta">Versão vigente: <strong>{LGPD_POLICY_VERSION}</strong></p>
-      <label className="lgpdCheck"><input type="checkbox" id="lgpd-confirm" onChange={()=>setError(null)}/> <span>Li e estou ciente do aviso de privacidade vigente.</span></label>
+      <label className="lgpdCheck"><input type="checkbox" id="lgpd-confirm" checked={checked} onChange={e=>{setChecked(e.target.checked);setError(null)}}/> <span>Li e estou ciente do aviso de privacidade vigente.</span></label>
       {error && <div className="resultBox">{error}</div>}
-      <button className="primaryButton" disabled={busy || !document?.getElementById?.("lgpd-confirm")?.checked} onClick={accept}>{busy ? "Registrando..." : "Aceitar e continuar"}</button>
+      <button className="primaryButton" disabled={busy || !checked} onClick={accept}>{busy ? "Registrando..." : "Aceitar e continuar"}</button>
       <small>O aceite não define, por si só, a base legal do tratamento de dados. A política, retenção e atendimento aos direitos dos titulares devem ser definidos pelo responsável pelo tratamento.</small>
     </div>
   </div>;
