@@ -2,15 +2,15 @@
 
 ## Objetivo
 
-O Control Center apresenta um aviso de privacidade antes do uso da interface quando ainda não existe um aceite local para a versão vigente.
+O Control Center apresenta um aviso de privacidade antes do uso da interface quando ainda não existe um aceite para a versão vigente. Usuários autenticados têm o aceite persistido no backend em `LEGAL_ACCEPTANCE`, com escopo de tenant e sujeito ao histórico de eventos.
 
 ## Registro do aceite
 
-O navegador registra versão do texto aceito, timestamp ISO-8601 do aceite e finalidade informada no aviso. A chave de versão faz o aviso reaparecer quando o texto vigente mudar.
+O navegador registra a versão aceita para controlar a experiência da interface. Para usuários autenticados, o backend registra versão da política, finalidade/tipo, ação, timestamp do servidor, tenant, sujeito, origem e correlação da requisição. A chave de versão faz o aviso reaparecer quando o texto vigente mudar.
 
 ## Limitação
 
-O registro em localStorage é mecanismo de experiência de usuário e não constitui, sozinho, prova jurídica de consentimento. Para operações autenticadas ou tratamento que exija evidência vinculante, o aceite deve ser persistido no backend, associado ao tenant/usuário, versão do documento, finalidade, timestamp do servidor e metadados de auditoria aplicáveis.
+O `localStorage` continua sendo apenas mecanismo de experiência de usuário e não constitui, sozinho, prova jurídica de consentimento. Para operações autenticadas, o endpoint `/legal/acceptance` persiste a evidência técnica no SGBD transacional configurado.
 
 ## Minimização
 
