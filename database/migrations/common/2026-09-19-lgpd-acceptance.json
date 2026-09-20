@@ -1,0 +1,16 @@
+{
+  "migration":"2026-09-19-lgpd-acceptance",
+  "version":1,
+  "purpose":"Tenant-scoped privacy notice and legal acceptance evidence",
+  "sourceOfTruth":"configured-transactional-sgbd",
+  "entities":["LEGAL_ACCEPTANCE"],
+  "requirements":{
+    "tenantIsolation":true,
+    "policyVersionRequired":true,
+    "serverTimestamp":true,
+    "auditability":true,
+    "revocation":true,
+    "minimalPersonalData":true
+  },
+  "note":"Acceptance evidence does not by itself establish a LGPD legal basis; the controller must define the applicable legal basis and retention policy."
+}
