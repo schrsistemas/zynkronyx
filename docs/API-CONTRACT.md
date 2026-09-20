@@ -207,3 +207,18 @@ The API is a contract boundary, not a reflection of internal implementation deta
 - `GET /ai/prompts/:id/promotion-history` returns tenant-scoped immutable promotion/rollback decision records.
 - Each record captures candidate/baseline versions, evaluation count and scores, delta, canary/release evidence, decision, operator, correlation ID, reason and details snapshot.
 - `POST /ai/prompts/:id/promote` re-evaluates the promotion gate inside the service transaction; promotion requires the configured evaluation policy and a previously `PASSED` canary.
+
+
+## LGPD / privacidade
+
+As rotas abaixo são tenant-scoped e autenticadas:
+
+- `GET /legal/acceptance?policy_type=PRIVACY_NOTICE` — retorna o evento mais recente do sujeito autenticado para a política.
+- `GET /legal/acceptance/history?limit=50` — retorna o histórico de eventos do sujeito autenticado.
+- `POST /legal/acceptance` — registra `ACCEPT` ou `REVOKE`.
+
+Para `ACCEPT`, a versão enviada deve ser a versão vigente configurada no servidor por `LEGAL_PRIVACY_NOTICE_VERSION`; versões antigas são rejeitadas com `409 LEGAL_POLICY_VERSION_OUTDATED`.
+
+A evidência persistida contém tenant, sujeito autenticado, tipo e versão da política, ação, timestamp do servidor, correlation id e origem. O navegador pode manter uma cópia local apenas para controle da experiência; essa cópia não é a fonte de verdade.
+
+O registro técnico de aceite não determina a base legal do tratamento. Finalidade, base legal, retenção e atendimento aos direitos dos titulares devem ser definidos pelo responsável pelo tratamento.
