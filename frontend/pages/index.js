@@ -5,6 +5,73 @@ import IntegrationsCenter from "../components/IntegrationsCenter";
 const RadarMap = dynamic(() => import("../components/RadarMap"), { ssr:false, loading:() => <div className="radarMap radarLoading">Carregando mapa operacional…</div> });
 
 const API = process.env.NEXT_PUBLIC_API_URL || "https://mute-grass-9428.schrsistemas.workers.dev";
+const LGPD_POLICY_VERSION = "2026-09-19";
+const LGPD_POLICY_TYPE = "PRIVACY_NOTICE";
+
+function LgpdAcceptance() {
+  const [visible,setVisible] = useState(false);
+  const [busy,setBusy] = useState(false);
+  const [error,setError] = useState(null);
+
+  useEffect(() => {
+    if(typeof window === "undefined") return;
+    const key = "zynkronyx_lgpd_acceptance_" + LGPD_POLICY_VERSION;
+    if(localStorage.getItem(key) === "ACCEPT") return;
+    let alive = true;
+    async function check() {
+      const token = sessionStorage.getItem("zynkronyx_token");
+      if(token) {
+        try {
+          const r = await fetch(API + "/legal/acceptance?policy_type=" + encodeURIComponent(LGPD_POLICY_TYPE), {headers:authHeaders(),cache:"no-store"});
+          const j = await r.json();
+          if(alive && r.ok && j.result?.policy_version === LGPD_POLICY_VERSION && j.result?.action === "ACCEPT") {
+            localStorage.setItem(key,"ACCEPT");
+            return;
+          }
+        } catch (_) {}
+      }
+      if(alive) setVisible(true);
+    }
+    check();
+    return () => { alive=false; };
+  }, []);
+
+  async function accept() {
+    setBusy(true); setError(null);
+    const key = "zynkronyx_lgpd_acceptance_" + LGPD_POLICY_VERSION;
+    try {
+      const token = sessionStorage.getItem("zynkronyx_token");
+      if(token) {
+        const r = await fetch(API + "/legal/acceptance", {
+          method:"POST",
+          headers:{"Content-Type":"application/json",...authHeaders()},
+          body:JSON.stringify({policy_type:LGPD_POLICY_TYPE,policy_version:LGPD_POLICY_VERSION,action:"ACCEPT",source:"control-center"})
+        });
+        const j = await r.json();
+        if(!r.ok) throw new Error(j.error || j.erro || "Não foi possível registrar o aceite.");
+      }
+      localStorage.setItem(key,"ACCEPT");
+      setVisible(false);
+    } catch(e) {
+      setError(e.message);
+    } finally { setBusy(false); }
+  }
+
+  if(!visible) return null;
+  return <div className="lgpdOverlay" role="dialog" aria-modal="true" aria-labelledby="lgpd-title">
+    <div className="lgpdCard">
+      <span className="eyebrow">PRIVACIDADE · LGPD</span>
+      <h2 id="lgpd-title">Aviso de privacidade</h2>
+      <p>Antes de continuar, consulte o aviso de privacidade vigente do Zynkronyx. O aceite técnico registra a versão do aviso e a evidência da ação.</p>
+      <p className="lgpdMeta">Versão vigente: <strong>{LGPD_POLICY_VERSION}</strong></p>
+      <label className="lgpdCheck"><input type="checkbox" id="lgpd-confirm" onChange={()=>setError(null)}/> <span>Li e estou ciente do aviso de privacidade vigente.</span></label>
+      {error && <div className="resultBox">{error}</div>}
+      <button className="primaryButton" disabled={busy || !document?.getElementById?.("lgpd-confirm")?.checked} onClick={accept}>{busy ? "Registrando..." : "Aceitar e continuar"}</button>
+      <small>O aceite não define, por si só, a base legal do tratamento de dados. A política, retenção e atendimento aos direitos dos titulares devem ser definidos pelo responsável pelo tratamento.</small>
+    </div>
+  </div>;
+}
+
 const fallbackServices = [
   ["API Gateway", "unknown", "Worker"],
   ["Database", "planned", "Configured SGBD"],
@@ -51,7 +118,9 @@ export default function Home() {
   ];
 
   return (
-    <div className="shell">
+    <>
+      <LgpdAcceptance />
+      <div className="shell">
       <aside className="sidebar">
         <div className="brand"><span className="brandMark">Z</span><div><strong>Zynkronyx</strong><small>Platform</small></div></div>
         <nav>
@@ -95,8 +164,8 @@ export default function Home() {
         {section === "docs" && <Docs/>}
       </main>
     </div>
+    </>
   );
-}
 
 function Nav({active,onClick,icon,children}) { return <button className={active?"active":""} onClick={onClick}>{icon} <span>{children}</span></button>; }
 function title(s) { return ({overview:"System Overview",services:"Services",api:"API Explorer",database:"Database",sync:"Synchronization",devices:"Device Integrations",audit:"Legal Audit",deploy:"Deployments",docs:"Documentation",integrations:"Integrations & Simulator",monitoring:"Monitoring",radar:"Radar Visual",security:"Security",ai:"AI / RAG",sales:"AI Sales"})[s] || "Zynkronyx"; }
