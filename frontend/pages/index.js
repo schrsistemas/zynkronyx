@@ -262,6 +262,18 @@ function AIGovernanceOverview({authVersion}) {
  </div>;
 }
 
+function AIPromptRollback({authVersion}) {
+ const [prompts,setPrompts]=useState([]),[target,setTarget]=useState(""),[busy,setBusy]=useState(false),[error,setError]=useState(null),[message,setMessage]=useState(null);
+ const auth=authHeaders();
+ async function load(){try{const r=await fetch(API+"/ai/prompts",{headers:auth,cache:"no-store"});const j=await r.json();if(!r.ok)throw new Error(j.error||"Falha ao carregar prompts");setPrompts(j.results||[])}catch(e){setError(e.message)}}
+ useEffect(()=>{load()},[authVersion]);
+ async function rollback(){if(!target)return;setBusy(true);setError(null);setMessage(null);try{const r=await fetch(API+"/ai/prompts/"+target+"/rollback",{method:"POST",headers:{"Content-Type":"application/json",...auth},body:JSON.stringify({reason:"Control Center production rollback"})});const j=await r.json();if(!r.ok)throw new Error(j.error||"Falha no rollback");setMessage("Rollback aplicado para o prompt "+target);setTarget("");await load()}catch(e){setError(e.message)}finally{setBusy(false)}}
+ return <div className="panel"><div className="sectionTitle"><h3>Production prompt rollback</h3></div><p className="lead">Operação separada do rollback de canary. Reativa uma versão tenant-owned e registra a decisão na linhagem de promoção.</p>
+ <div className="formRow"><select value={target} onChange={e=>setTarget(e.target.value)}><option value="">Versão alvo…</option>{prompts.filter(x=>String(x.STATUS).toUpperCase()==="RETIRED").map(x=><option key={x.ID} value={x.ID}>v{x.VERSION_NO} · {x.NAME}</option>)}</select><button disabled={!target||busy} onClick={rollback}>{busy?"Aplicando…":"Rollback de produção"}</button></div>
+ {error&&<div className="resultBox">{error}</div>}{message&&<div className="resultBox">{message}</div>}
+ </div>;
+}
+
 function AIPromotionLineage({authVersion}) {
  const [prompts,setPrompts]=useState([]),[selected,setSelected]=useState(null),[history,setHistory]=useState([]),[error,setError]=useState(null),[loading,setLoading]=useState(false);
  const auth=authHeaders();
@@ -323,6 +335,7 @@ function AICenter({authVersion}) {
   <AIRefinementQueue authVersion={authVersion}/>
   <AIEvaluationOperations authVersion={authVersion}/>
   <AICanaryOperations authVersion={authVersion}/>
+  <AIPromptRollback authVersion={authVersion}/>
   <div className="panel">
    <div className="sectionTitle"><h3>Consulta controlada</h3><span>Tenant + authorization + audit</span></div>
    <form className="securityForm" onSubmit={ask}>
