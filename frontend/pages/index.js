@@ -51,6 +51,7 @@ export default function Home() {
   ];
 
   return (
+    <LgpdConsent />
     <div className="shell">
       <aside className="sidebar">
         <div className="brand"><span className="brandMark">Z</span><div><strong>Zynkronyx</strong><small>Platform</small></div></div>
@@ -424,6 +425,25 @@ function Audit() {
    {cursor>0&&<div className="syncActions"><button onClick={()=>load(cursor)}>Carregar próxima página</button></div>}
   </div>
   {selected&&<div className="panel auditDetail"><div className="sectionTitle"><h3>Evento de segurança</h3><button onClick={()=>setSelected(null)}>Fechar</button></div><pre className="resultBox">{JSON.stringify(selected,null,2)}</pre></div>}
+ </div>;
+}
+
+function LgpdConsent() {
+ const KEY="zynkronyx_lgpd_consent_v1";
+ const [open,setOpen]=useState(false);
+ const [checked,setChecked]=useState(false);
+ useEffect(()=>{try{setOpen(localStorage.getItem(KEY)!=="accepted")}catch(_){setOpen(false)}},[]);
+ function accept(){if(!checked)return;try{localStorage.setItem(KEY,"accepted")}catch(_){}setOpen(false)}
+ if(!open)return null;
+ return <div className="lgpdOverlay" role="dialog" aria-modal="true" aria-labelledby="lgpd-title">
+  <div className="lgpdCard">
+   <span className="pill">LGPD</span>
+   <h2 id="lgpd-title">Privacidade e proteção de dados</h2>
+   <p>O Zynkronyx pode tratar dados pessoais para autenticação, segurança, auditoria, operação e prestação dos serviços, conforme a finalidade aplicável e os controles definidos pelo responsável pelo tratamento.</p>
+   <p className="lgpdNote">O aceite é registrado neste navegador para controlar a apresentação deste aviso. O armazenamento local, por si só, não constitui prova de consentimento jurídico nem substitui os registros formais de tratamento.</p>
+   <label className="lgpdCheck"><input type="checkbox" checked={checked} onChange={e=>setChecked(e.target.checked)}/> <span>Li o aviso de privacidade e concordo com o tratamento de dados nas finalidades informadas.</span></label>
+   <div className="lgpdActions"><button disabled={!checked} onClick={accept}>Aceitar</button><button className="secondary" onClick={()=>setOpen(false)}>Continuar sem aceitar</button></div>
+  </div>
  </div>;
 }
 
