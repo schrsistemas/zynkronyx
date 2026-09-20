@@ -51,7 +51,6 @@ export default function Home() {
   ];
 
   return (
-    <LgpdConsent />
     <div className="shell">
       <aside className="sidebar">
         <div className="brand"><span className="brandMark">Z</span><div><strong>Zynkronyx</strong><small>Platform</small></div></div>
