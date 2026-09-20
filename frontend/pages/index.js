@@ -12,6 +12,7 @@ function LgpdAcceptance() {
   const [visible,setVisible] = useState(false);
   const [busy,setBusy] = useState(false);
   const [error,setError] = useState(null);
+  const [checked,setChecked] = useState(false);
 
   useEffect(() => {
     if(typeof window === "undefined") return;
@@ -41,15 +42,14 @@ function LgpdAcceptance() {
     const key = "zynkronyx_lgpd_acceptance_" + LGPD_POLICY_VERSION;
     try {
       const token = sessionStorage.getItem("zynkronyx_token");
-      if(token) {
-        const r = await fetch(API + "/legal/acceptance", {
-          method:"POST",
-          headers:{"Content-Type":"application/json",...authHeaders()},
-          body:JSON.stringify({policy_type:LGPD_POLICY_TYPE,policy_version:LGPD_POLICY_VERSION,action:"ACCEPT",source:"control-center"})
-        });
-        const j = await r.json();
-        if(!r.ok) throw new Error(j.error || j.erro || "Não foi possível registrar o aceite.");
-      }
+      if(!token) throw new Error("Entre na plataforma para registrar o aceite de forma auditável.");
+      const r = await fetch(API + "/legal/acceptance", {
+        method:"POST",
+        headers:{"Content-Type":"application/json",...authHeaders()},
+        body:JSON.stringify({policy_type:LGPD_POLICY_TYPE,policy_version:LGPD_POLICY_VERSION,action:"ACCEPT",source:"control-center"})
+      });
+      const j = await r.json();
+      if(!r.ok) throw new Error(j.error || j.erro || "Não foi possível registrar o aceite.");
       localStorage.setItem(key,"ACCEPT");
       setVisible(false);
     } catch(e) {
