@@ -200,6 +200,20 @@ function Radar() {
 }
 
 
+function AIEvaluationOperations({authVersion}) {
+ const [runs,setRuns]=useState([]),[cases,setCases]=useState([]),[loading,setLoading]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(null);
+ const auth=authHeaders();
+ async function load(){setLoading(true);setError(null);try{const [a,b]=await Promise.all([fetch(API+"/ai/eval/runs?limit=50",{headers:auth,cache:"no-store"}),fetch(API+"/ai/eval/cases",{headers:auth,cache:"no-store"})]);const ja=await a.json(),jb=await b.json();if(!a.ok)throw new Error(ja.error||"Falha nos runs");if(!b.ok)throw new Error(jb.error||"Falha nos casos");setRuns(ja.results||[]);setCases(jb.results||[])}catch(e){setError(e.message)}finally{setLoading(false)}}
+ async function execute(){setBusy(true);setError(null);try{const r=await fetch(API+"/ai/eval/run",{method:"POST",headers:{"Content-Type":"application/json",...auth},body:JSON.stringify({})});const j=await r.json();if(!r.ok)throw new Error(j.error||"Falha na avaliação");await load()}catch(e){setError(e.message)}finally{setBusy(false)}}
+ useEffect(()=>{load()},[authVersion]);
+ const avg=runs.length?runs.reduce((s,x)=>s+Number(x.SCORE||0),0)/runs.length:null;
+ return <div className="panel"><div className="sectionTitle"><h3>Evaluation operations</h3><div><button onClick={load}>{loading?"Atualizando…":"Atualizar"}</button>{" "}<button disabled={busy} onClick={execute}>{busy?"Executando…":"Executar avaliação"}</button></div></div>
+ <div className="metricGrid"><div><strong>{cases.length}</strong><small>casos ativos</small></div><div><strong>{runs.length}</strong><small>runs recentes</small></div><div><strong>{avg==null?"—":avg.toFixed(3)}</strong><small>score médio</small></div></div>
+ {error&&<div className="resultBox">{error}</div>}
+ {runs.slice(0,12).map(x=><div className="row" key={x.ID}><div><strong>Run #{x.ID}</strong><small>case {x.EVAL_CASE_ID} · prompt {x.PROMPT_VERSION_ID||"—"} · baseline {x.BASELINE_PROMPT_VERSION_ID||"—"}</small><small>{x.PROVIDER||"—"} / {x.MODEL||"—"} · {x.LATENCY_MS||"—"} ms · {x.CREATED_AT||"—"}</small></div><span className="status">{x.SCORE==null?"—":Number(x.SCORE).toFixed(3)}</span></div>)}
+ </div>;
+}
+
 function AIRefinementQueue({authVersion}) {
  const [items,setItems]=useState([]),[error,setError]=useState(null),[loading,setLoading]=useState(false),[busy,setBusy]=useState(null);
  const auth=authHeaders();
@@ -292,6 +306,7 @@ function AICenter({authVersion}) {
   <AIPromotionLineage authVersion={authVersion}/>
   <AIGovernanceOverview authVersion={authVersion}/>
   <AIRefinementQueue authVersion={authVersion}/>
+  <AIEvaluationOperations authVersion={authVersion}/>
   <div className="panel">
    <div className="sectionTitle"><h3>Consulta controlada</h3><span>Tenant + authorization + audit</span></div>
    <form className="securityForm" onSubmit={ask}>
