@@ -1,7 +1,7 @@
 const VERSION = "0.3.6";
 const PUBLIC_ORIGIN = "https://zynkronyx-control-center.pages.dev";
 const PUBLIC_PATHS = new Set(["/", "/health", "/api/status", "/api/capabilities"]);
-const GATEWAY_PREFIXES = ["/auth", "/sync", "/integration", "/audit", "/ai", "/sales", "/fiscal", "/admin", "/metrics", "/ready"];
+const GATEWAY_PREFIXES = ["/auth", "/sync", "/integration", "/audit", "/ai", "/sales", "/fiscal", "/admin", "/legal", "/metrics", "/ready"];
 
 function corsHeaders(origin) {
   return {
@@ -129,11 +129,11 @@ function publicResponse(request, path, env) {
       { name: "health", method: "GET", path: "/health", status: "active" },
       { name: "status", method: "GET", path: "/api/status", status: "active" },
       { name: "capabilities", method: "GET", path: "/api/capabilities", status: "active" },
-      { name: "database", status: "backend", target: "Firebird" },
+      { name: "database", status: "backend", target: "configured transactional SGBD" },
       { name: "authentication", status: "backend" },
       { name: "device-events", method: "POST", path: "/integration/events", status: "backend" },
       { name: "audit", method: "GET", path: "/audit/events", status: "backend" },
-      { name: "sync", status: "backend", target: "Firebird" },
+      { name: "sync", status: "backend", target: "configured transactional SGBD" },
     ],
     timestamp: now(),
   }, 200, request);
