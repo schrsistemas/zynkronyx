@@ -90,7 +90,7 @@ async function proxy(request, env, path) {
   }
 }
 
-function publicResponse(request, path) {
+function publicResponse(request, path, env) {
   if (path === "/") {
     return new Response(HTML, {
       headers: {
@@ -152,7 +152,7 @@ export default {
     }
 
     if (PUBLIC_PATHS.has(path)) {
-      return publicResponse(request, path);
+      return publicResponse(request, path, env);
     }
 
     if (isGatewayPath(path)) {
