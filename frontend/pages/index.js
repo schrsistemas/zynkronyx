@@ -429,19 +429,45 @@ function Audit() {
 
 function LgpdConsent() {
  const KEY="zynkronyx_lgpd_consent_v1";
+ const POLICY_VERSION="v1";
+ const POLICY_TYPE="PRIVACY_NOTICE";
  const [open,setOpen]=useState(false);
  const [checked,setChecked]=useState(false);
- useEffect(()=>{try{setOpen(localStorage.getItem(KEY)!=="accepted")}catch(_){setOpen(false)}},[]);
- function accept(){if(!checked)return;try{localStorage.setItem(KEY,"accepted")}catch(_){}setOpen(false)}
+ const [saving,setSaving]=useState(false);
+ const [message,setMessage]=useState(null);
+ useEffect(()=>{let active=true;(async()=>{try{
+   const local=localStorage.getItem(KEY)==="accepted";
+   const token=sessionStorage.getItem("zynkronyx_token");
+   if(!token){if(active)setOpen(!local);return;}
+   const r=await fetch(API+"/legal/acceptance?policy_type="+encodeURIComponent(POLICY_TYPE),{headers:authHeaders()});
+   const j=await r.json().catch(()=>({}));
+   if(active)setOpen(!(r.ok&&j.result&&j.result.ACTION==="ACCEPT"&&j.result.POLICY_VERSION===POLICY_VERSION));
+ }catch(_){if(active){try{setOpen(localStorage.getItem(KEY)!=="accepted")}catch(__){setOpen(false)}}}})();return()=>{active=false}},[]);
+ async function accept(){
+   if(!checked||saving)return;
+   setSaving(true);setMessage(null);
+   try{
+     const token=sessionStorage.getItem("zynkronyx_token");
+     if(token){
+       const r=await fetch(API+"/legal/acceptance",{method:"POST",headers:{"Content-Type":"application/json",...authHeaders()},body:JSON.stringify({policy_type:POLICY_TYPE,policy_version:POLICY_VERSION,action:"ACCEPT",source:"control-center"})});
+       const j=await r.json().catch(()=>({}));
+       if(!r.ok)throw new Error(j.error||"Não foi possível registrar o aceite.");
+     }
+     try{localStorage.setItem(KEY,"accepted")}catch(_){}
+     setOpen(false);
+   }catch(e){setMessage(e.message||"Falha ao registrar o aceite.");}
+   finally{setSaving(false)}
+ }
  if(!open)return null;
  return <div className="lgpdOverlay" role="dialog" aria-modal="true" aria-labelledby="lgpd-title">
   <div className="lgpdCard">
    <span className="pill">LGPD</span>
    <h2 id="lgpd-title">Privacidade e proteção de dados</h2>
    <p>O Zynkronyx pode tratar dados pessoais para autenticação, segurança, auditoria, operação e prestação dos serviços, conforme a finalidade aplicável e os controles definidos pelo responsável pelo tratamento.</p>
-   <p className="lgpdNote">O aceite é registrado neste navegador para controlar a apresentação deste aviso. O armazenamento local, por si só, não constitui prova de consentimento jurídico nem substitui os registros formais de tratamento.</p>
+   <p className="lgpdNote">Versão do aviso: <strong>{POLICY_VERSION}</strong>. Para usuários autenticados, o aceite é registrado no backend com tenant, usuário, versão, finalidade, timestamp do servidor e correlação da requisição.</p>
    <label className="lgpdCheck"><input type="checkbox" checked={checked} onChange={e=>setChecked(e.target.checked)}/> <span>Li o aviso de privacidade e concordo com o tratamento de dados nas finalidades informadas.</span></label>
-   <div className="lgpdActions"><button disabled={!checked} onClick={accept}>Aceitar</button><button className="secondary" onClick={()=>setOpen(false)}>Continuar sem aceitar</button></div>
+   {message&&<p className="error">{message}</p>}
+   <div className="lgpdActions"><button disabled={!checked||saving} onClick={accept}>{saving?"Registrando…":"Aceitar"}</button><button className="secondary" disabled={saving} onClick={()=>setOpen(false)}>Continuar sem aceitar</button></div>
   </div>
  </div>;
 }
