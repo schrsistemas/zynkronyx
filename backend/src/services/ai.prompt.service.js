@@ -14,8 +14,6 @@ async function rollback(tenantId,targetId,meta={}) {
  if(Number(target.TENANT_ID)!==Number(tenantId)){const e=new Error('PROMPT_VERSION_TENANT_MISMATCH');e.status=409;throw e;}
  if(String(target.STATUS).toUpperCase()==='ACTIVE') return {rolled_back_to:Number(targetId),previous_active:Number(targetId),idempotent:true};
  return db.withTransaction(async tx=>{
-  const current=await tx.query("SELECT ID,VERSION_NO FROM AI_PROMPT_VERSION WHERE TENANT_ID=? AND STATUS='ACTIVE'",[tenantId]);
-  if(!current[0]){const e=new Error('ACTIVE_PROMPT_NOT_FOUND');e.status=409;throw e;}
   const lock=(sql)=>typeof db.dialect==='function'&&typeof db.dialect().lock==='function'?db.dialect().lock(sql):sql;
   const current=await tx.query(lock("SELECT ID,VERSION_NO FROM AI_PROMPT_VERSION WHERE TENANT_ID=? AND STATUS='ACTIVE'"),[tenantId]);
   if(!current[0]){const e=new Error('ACTIVE_PROMPT_NOT_FOUND');e.status=409;throw e;}
