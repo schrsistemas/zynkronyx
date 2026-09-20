@@ -200,6 +200,21 @@ function Radar() {
 }
 
 
+function AICanaryOperations({authVersion}) {
+ const [releases,setReleases]=useState([]),[prompts,setPrompts]=useState([]),[loading,setLoading]=useState(false),[busy,setBusy]=useState(null),[error,setError]=useState(null),[candidate,setCandidate]=useState("");
+ const auth=authHeaders();
+ async function load(){setLoading(true);setError(null);try{const [a,b]=await Promise.all([fetch(API+"/ai/releases",{headers:auth,cache:"no-store"}),fetch(API+"/ai/prompts",{headers:auth,cache:"no-store"})]);const ja=await a.json(),jb=await b.json();if(!a.ok)throw new Error(ja.error||"Falha nos canaries");if(!b.ok)throw new Error(jb.error||"Falha nos prompts");setReleases(ja.results||[]);setPrompts(jb.results||[])}catch(e){setError(e.message)}finally{setLoading(false)}}
+ async function create(){const id=Number(candidate);if(!Number.isInteger(id)||id<1){setError("Selecione um prompt candidato");return}setBusy("create");setError(null);try{const r=await fetch(API+"/ai/releases",{method:"POST",headers:{"Content-Type":"application/json",...auth},body:JSON.stringify({prompt_version_id:id,traffic_percent:10})});const j=await r.json();if(!r.ok)throw new Error(j.error||"Falha ao criar canary");setCandidate("");await load()}catch(e){setError(e.message)}finally{setBusy(null)}}
+ async function finish(id,status){setBusy(id+status);setError(null);try{const r=await fetch(API+"/ai/releases/"+id+"/finish",{method:"POST",headers:{"Content-Type":"application/json",...auth},body:JSON.stringify({status,result:{source:"control-center"}})});const j=await r.json();if(!r.ok)throw new Error(j.error||"Falha ao finalizar canary");await load()}catch(e){setError(e.message)}finally{setBusy(null)}}
+ async function rollback(id){setBusy("rollback"+id);setError(null);try{const r=await fetch(API+"/ai/releases/"+id+"/rollback",{method:"POST",headers:{"Content-Type":"application/json",...auth},body:JSON.stringify({reason:"Control Center rollback"})});const j=await r.json();if(!r.ok)throw new Error(j.error||"Falha ao fazer rollback");await load()}catch(e){setError(e.message)}finally{setBusy(null)}}
+ useEffect(()=>{load()},[authVersion]);
+ return <div className="panel"><div className="sectionTitle"><h3>Canary operations</h3><button onClick={load}>{loading?"Atualizando…":"Atualizar"}</button></div>
+ <div className="formRow"><select value={candidate} onChange={e=>setCandidate(e.target.value)}><option value="">Prompt candidato…</option>{prompts.filter(x=>String(x.STATUS).toUpperCase()!=="ACTIVE").map(x=><option key={x.ID} value={x.ID}>v{x.VERSION_NO} · {x.NAME} · {x.STATUS}</option>)}</select><button disabled={busy==="create"} onClick={create}>{busy==="create"?"Criando…":"Criar canary · 10%"}</button></div>
+ {error&&<div className="resultBox">{error}</div>}
+ {releases.map(x=><div className="row" key={x.ID}><div><strong>Release #{x.ID} · prompt {x.PROMPT_VERSION_ID}</strong><small>baseline {x.BASELINE_VERSION_ID||"—"} · {x.MODE} · {x.TRAFFIC_PERCENT}%</small><small>{x.STATUS} · {x.STARTED_AT||"—"} → {x.FINISHED_AT||"—"}</small>{x.RESULT_JSON&&<small>{String(x.RESULT_JSON).slice(0,300)}</small>}</div><span className="status">{x.STATUS}</span><div>{x.STATUS==="RUNNING"&&<><button disabled={busy===x.ID+"PASSED"} onClick={()=>finish(x.ID,"PASSED")}>PASS</button>{" "}<button disabled={busy===x.ID+"FAILED"} onClick={()=>finish(x.ID,"FAILED")}>FAIL</button>{" "}<button disabled={busy==="rollback"+x.ID} onClick={()=>rollback(x.ID)}>Rollback</button></>}</div></div>)}
+ </div>;
+}
+
 function AIEvaluationOperations({authVersion}) {
  const [runs,setRuns]=useState([]),[cases,setCases]=useState([]),[loading,setLoading]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(null);
  const auth=authHeaders();
@@ -307,6 +322,7 @@ function AICenter({authVersion}) {
   <AIGovernanceOverview authVersion={authVersion}/>
   <AIRefinementQueue authVersion={authVersion}/>
   <AIEvaluationOperations authVersion={authVersion}/>
+  <AICanaryOperations authVersion={authVersion}/>
   <div className="panel">
    <div className="sectionTitle"><h3>Consulta controlada</h3><span>Tenant + authorization + audit</span></div>
    <form className="securityForm" onSubmit={ask}>
