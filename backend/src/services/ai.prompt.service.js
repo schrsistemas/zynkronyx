@@ -16,8 +16,12 @@ async function rollback(tenantId,targetId,meta={}) {
  return db.withTransaction(async tx=>{
   const current=await tx.query("SELECT ID,VERSION_NO FROM AI_PROMPT_VERSION WHERE TENANT_ID=? AND STATUS='ACTIVE'",[tenantId]);
   if(!current[0]){const e=new Error('ACTIVE_PROMPT_NOT_FOUND');e.status=409;throw e;}
-  const targetRows=await tx.query("SELECT ID,VERSION_NO,STATUS FROM AI_PROMPT_VERSION WHERE ID=? AND TENANT_ID=?",[Number(targetId),tenantId]);
+  const lock=(sql)=>typeof db.dialect==='function'&&typeof db.dialect().lock==='function'?db.dialect().lock(sql):sql;
+  const current=await tx.query(lock("SELECT ID,VERSION_NO FROM AI_PROMPT_VERSION WHERE TENANT_ID=? AND STATUS='ACTIVE'"),[tenantId]);
+  if(!current[0]){const e=new Error('ACTIVE_PROMPT_NOT_FOUND');e.status=409;throw e;}
+  const targetRows=await tx.query(lock("SELECT ID,VERSION_NO,STATUS FROM AI_PROMPT_VERSION WHERE ID=? AND TENANT_ID=?"),[Number(targetId),tenantId]);
   if(!targetRows[0]){const e=new Error('PROMPT_VERSION_NOT_FOUND');e.status=404;throw e;}
+  if(String(targetRows[0].STATUS).toUpperCase()!=='RETIRED'){const e=new Error('PROMPT_ROLLBACK_TARGET_NOT_RETIRED');e.status=409;throw e;}
   await tx.execute("UPDATE AI_PROMPT_VERSION SET STATUS='RETIRED' WHERE TENANT_ID=? AND STATUS='ACTIVE'",[tenantId]);
   await tx.execute("UPDATE AI_PROMPT_VERSION SET STATUS='ACTIVE',PROMOTED_AT=CURRENT_TIMESTAMP WHERE ID=? AND TENANT_ID=?",[Number(targetId),tenantId]);
   const auditId=await tx.nextId('AI_PROMPT_PROMOTION_AUDIT');
