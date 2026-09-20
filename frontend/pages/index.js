@@ -28,8 +28,9 @@ export default function Home() {
           fetch(API + "/api/status", { cache: "no-store" }),
           fetch(API + "/api/capabilities", { cache: "no-store" }),
         ]);
-        const statusJson = await s.json();
-        const capJson = await c.json();
+        const statusJson = await s.json().catch(() => ({ ok:false, error:"INVALID_STATUS_RESPONSE" }));
+        const capJson = await c.json().catch(() => ({ ok:false, error:"INVALID_CAPABILITIES_RESPONSE" }));
+        if (!s.ok || !c.ok) throw new Error(statusJson.error || capJson.error || `Gateway HTTP ${s.status}/${c.status}`);
         if (!alive) return;
         setStatus(statusJson);
         setCapabilities(capJson.capabilities || []);
