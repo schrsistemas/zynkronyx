@@ -152,7 +152,7 @@ export default function Home() {
         {section === "database" && <Database capabilities={capabilities}/>} 
         {section === "sync" && <SyncConsole/>}
         {section === "monitoring" && <Monitoring status={status} latency={latency}/>} 
-        {section === "security" && <Security onAuth={()=>setAuthVersion(v=>v+1)}/>}
+        {section === "security" && <Security authVersion={authVersion} onAuth={()=>setAuthVersion(v=>v+1)}/>}
         {section === "ai" && <AICenter authVersion={authVersion}/>}
         {section === "sales" && <SalesCenter authVersion={authVersion}/>}
         {section === "radar" && <Radar/>}
@@ -505,10 +505,10 @@ function Database({capabilities}) {
 }
 
 
-function Security({onAuth}) {
+function Security({onAuth,authVersion}) {
  const [login,setLogin]=useState(""); const [password,setPassword]=useState(""); const [message,setMessage]=useState(null); const [loading,setLoading]=useState(false);
  const [privacy,setPrivacy]=useState(null); const [privacyBusy,setPrivacyBusy]=useState(false); const [logged,setLogged]=useState(false);
- useEffect(()=>{setLogged(typeof window!=="undefined"&&!!sessionStorage.getItem("zynkronyx_token"))},[]);
+ useEffect(()=>{setLogged(typeof window!=="undefined"&&!!sessionStorage.getItem("zynkronyx_token"))},[authVersion]);
  useEffect(()=>{if(!logged)return; let alive=true; fetch(API+"/legal/acceptance?policy_type="+encodeURIComponent(LGPD_POLICY_TYPE),{headers:authHeaders(),cache:"no-store"}).then(r=>r.json()).then(j=>{if(alive)setPrivacy(j.result||null)}).catch(()=>{}); return()=>{alive=false}},[logged]);
  async function submit(e){e.preventDefault();setLoading(true);setMessage(null);try{const r=await fetch(API+"/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({login,password})});const j=await r.json();if(!r.ok)throw new Error(j.erro||"Falha no login");sessionStorage.setItem("zynkronyx_token",j.token);setPassword("");setMessage("Sessão autenticada neste navegador.");onAuth?.()}catch(e){setMessage(e.message)}finally{setLoading(false)}}
  function logout(){sessionStorage.removeItem("zynkronyx_token");setMessage("Sessão encerrada.");onAuth?.()}
