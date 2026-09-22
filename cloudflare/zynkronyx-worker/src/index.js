@@ -1,3 +1,5 @@
+import { ZynkronyxOrchestration } from "./workflow.js";
+
 const VERSION = "0.3.6";
 const PUBLIC_ORIGIN = "https://zynkronyx-control-center.pages.dev";
 const PUBLIC_PATHS = new Set(["/", "/health", "/api/status", "/api/capabilities"]);
@@ -162,3 +164,6 @@ export default {
     return json({ ok: false, error: "NOT_FOUND", path, version: VERSION }, 404, request);
   },
 };
+
+
+export { ZynkronyxOrchestration };
