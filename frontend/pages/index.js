@@ -78,13 +78,6 @@ function LgpdAcceptance({authVersion}) {
   </div>;
 }
 
-const fallbackServices = [
-  ["API Gateway", "unknown", "Worker"],
-  ["Database", "planned", "Configured SGBD"],
-  ["Observability", "planned", "Logs / Metrics"],
-  ["DelphiDBUtils", "development", "FireDAC"],
-];
-
 export default function Home() {
   const [section, setSection] = useState("overview");
   const [status, setStatus] = useState(null);
@@ -118,9 +111,9 @@ export default function Home() {
 
   const serviceRows = [
     ["API Gateway", status?.ok ? "online" : "offline", status?.runtime || "Worker"],
-    ["Database", findCapability(capabilities, "database")?.status || "planned", "Configured SGBD"],
-    ["Observability", "planned", "Tracing"],
-    ["DelphiDBUtils", "development", "FireDAC"],
+    ["Database", findCapability(capabilities, "database")?.status || "not-observed", "Configured SGBD"],
+    ["Observability", "not-observed", "Tracing"],
+    ["DelphiDBUtils", "not-observed", "FireDAC"],
   ];
 
   return (
@@ -189,7 +182,7 @@ function Overview({status,latency,services,capabilities}) {
     <Stat title="API round trip" value={latency ? latency + " ms" : "—"} note="live browser check"/>
     <Stat title="Services" value={services.length} note="registered"/>
     <Stat title="Environment" value={status?.environment?.toUpperCase() || "PUBLIC"} note="serverless"/>
-    <Stat title="Database" value={findCapability(capabilities,"database")?.status === "active" ? "ACTIVE" : "NEXT"} note="data layer"/>
+    <Stat title="Database" value={findCapability(capabilities,"database")?.status || "NOT OBSERVED"} note="gateway capability"/>
   </div>
   <section><div className="sectionTitle"><h3>Service health</h3><span>Live API data</span></div><div className="serviceGrid">{services.map(s=><div className="service" key={s[0]}><div className="serviceIcon">◆</div><div className="serviceName">{s[0]}</div><span className={"status " + (s[1]==="online"?"":"muted")}>{s[1]}</span><div className="serviceMeta">{s[2]}</div></div>)}</div></section>
   <section><div className="sectionTitle"><h3>Architecture</h3><span>Current foundation</span></div><div className="architecture"><div>CLIENTS<span>Delphi · Web · Android</span></div><b>→</b><div>EDGE<span>Cloudflare Worker</span></div><b>→</b><div>BACKEND<span>Node · Express</span></div><b>→</b><div>DATA<span>Configured SGBD</span></div></div></section>
@@ -457,9 +450,9 @@ function Deployments() {
   <div className="hero"><div><span className="pill">DEPLOY PIPELINE</span><h2>Deployments</h2><p>Visão operacional dos artefatos e verificações de publicação.</p></div><div className="heroVersion">GHCR<br/><small>immutable SHA tags</small></div></div>
   <div className="stats"><Stat title="Backend image" value="GHCR" note="published by CI"/><Stat title="Frontend" value="Pages" note="Cloudflare"/><Stat title="Runtime check" value="/health" note="smoke test"/><Stat title="Rollback" value="SHA" note="immutable tag"/></div>
   <div className="panel"><p className="lead">Contrato atual</p>
-   <div className="row"><div><strong>Backend container</strong><small>Dockerfile.prod.fix → GHCR → runtime externo configurado</small></div><span className="status">VERIFIED</span></div>
-   <div className="row"><div><strong>Control Center</strong><small>Next.js static export → Cloudflare Pages</small></div><span className="status">LIVE</span></div>
-   <div className="row"><div><strong>Production boundary</strong><small>CI não é tratado como servidor persistente</small></div><span className="status">ENFORCED</span></div>
+   <div className="row"><div><strong>Backend container</strong><small>Dockerfile.prod.fix → GHCR → runtime externo configurado</small></div><span className="status">PIPELINE</span></div>
+   <div className="row"><div><strong>Control Center</strong><small>Next.js static export → Cloudflare Pages</small></div><span className="status">DEPLOY TARGET</span></div>
+   <div className="row"><div><strong>Production boundary</strong><small>CI não é tratado como servidor persistente</small></div><span className="status">CONTRACT</span></div>
   </div>
  </div>;
 }
@@ -508,7 +501,7 @@ function Docs() { return <div className="panel"><p className="lead">Documentaç�
 
 function Database({capabilities}) {
  const db=findCapability(capabilities,"database");
- return <div className="emptyState"><div className="bigIcon">▣</div><h2>Data layer</h2><p>Status informado pela API: <strong>{db?.status || "planned"}</strong>. A camada de dados operacional é definida pelo SGBD configurado no deployment. A interface exibirá dados reais quando a API autenticada de banco estiver disponível.</p><div className="progress"><span style={{width:db?.status==="active"?"100%":"42%"}}/></div><small>{db?.status==="active"?"Connected":"Foundation"}</small></div>
+ return <div className="emptyState"><div className="bigIcon">▣</div><h2>Data layer</h2><p>Status informado pelo gateway: <strong>{db?.status || "not-observed"}</strong>. Isso representa a capacidade declarada pelo gateway; não é prova de conexão ativa com o banco. A prontidão real é validada pelo endpoint <code>/ready</code> no pipeline.</p><small>Sem percentual fictício de progresso.</small></div>
 }
 
 
