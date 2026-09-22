@@ -8,7 +8,7 @@ const API = process.env.NEXT_PUBLIC_API_URL || "https://mute-grass-9428.schrsist
 const LGPD_POLICY_VERSION = "2026-09-19";
 const LGPD_POLICY_TYPE = "PRIVACY_NOTICE";
 
-function LgpdAcceptance() {
+function LgpdAcceptance({authVersion}) {
   const [visible,setVisible] = useState(false);
   const [busy,setBusy] = useState(false);
   const [error,setError] = useState(null);
@@ -21,21 +21,27 @@ function LgpdAcceptance() {
     let alive = true;
     async function check() {
       const token = sessionStorage.getItem("zynkronyx_token");
-      if(token) {
-        try {
+      if(!token) {
+        if(alive) {
+          setVisible(false);
+          setChecked(false);
+          setError(null);
+        }
+        return;
+      }
+      try {
           const r = await fetch(API + "/legal/acceptance?policy_type=" + encodeURIComponent(LGPD_POLICY_TYPE), {headers:authHeaders(),cache:"no-store"});
           const j = await r.json();
           if(alive && r.ok && j.result?.policy_version === LGPD_POLICY_VERSION && j.result?.action === "ACCEPT") {
             localStorage.setItem(key,"ACCEPT");
             return;
           }
-        } catch (_) {}
-      }
+      } catch (_) {}
       if(alive) setVisible(true);
     }
     check();
     return () => { alive=false; };
-  }, []);
+  }, [authVersion]);
 
   async function accept() {
     setBusy(true); setError(null);
@@ -119,7 +125,7 @@ export default function Home() {
 
   return (
     <>
-      <LgpdAcceptance />
+      <LgpdAcceptance authVersion={authVersion} />
       <div className="shell">
       <aside className="sidebar">
         <div className="brand"><span className="brandMark">Z</span><div><strong>Zynkronyx</strong><small>Platform</small></div></div>
@@ -497,52 +503,6 @@ function Audit() {
  </div>;
 }
 
-function LgpdConsent() {
- const KEY="zynkronyx_lgpd_consent_v1";
- const POLICY_VERSION="v1";
- const POLICY_TYPE="PRIVACY_NOTICE";
- const [open,setOpen]=useState(false);
- const [checked,setChecked]=useState(false);
- const [saving,setSaving]=useState(false);
- const [message,setMessage]=useState(null);
- const [authenticated,setAuthenticated]=useState(false);
- useEffect(()=>{let active=true;(async()=>{try{
-   const local=localStorage.getItem(KEY)==="accepted";
-   const token=sessionStorage.getItem("zynkronyx_token");
-   if(!token){if(active){setAuthenticated(false);setOpen(!local)}return;}
-   if(active)setAuthenticated(true);
-   const r=await fetch(API+"/legal/acceptance?policy_type="+encodeURIComponent(POLICY_TYPE),{headers:authHeaders()});
-   const j=await r.json().catch(()=>({}));
-   if(active)setOpen(!(r.ok&&j.result&&j.result.ACTION==="ACCEPT"&&j.result.POLICY_VERSION===POLICY_VERSION));
- }catch(_){if(active){try{setOpen(localStorage.getItem(KEY)!=="accepted")}catch(__){setOpen(false)}}}})();return()=>{active=false}},[]);
- async function accept(){
-   if(!checked||saving)return;
-   setSaving(true);setMessage(null);
-   try{
-     const token=sessionStorage.getItem("zynkronyx_token");
-     if(token){
-       const r=await fetch(API+"/legal/acceptance",{method:"POST",headers:{"Content-Type":"application/json",...authHeaders()},body:JSON.stringify({policy_type:POLICY_TYPE,policy_version:POLICY_VERSION,action:"ACCEPT",source:"control-center"})});
-       const j=await r.json().catch(()=>({}));
-       if(!r.ok)throw new Error(j.error||"Não foi possível registrar o aceite no servidor.");
-     }
-     try{localStorage.setItem(KEY,"accepted")}catch(_){}
-     setOpen(false);
-   }catch(e){setMessage(e.message||"Falha ao registrar o aceite.");}
-   finally{setSaving(false)}
- }
- if(!open)return null;
- return <div className="lgpdOverlay" role="dialog" aria-modal="true" aria-labelledby="lgpd-title">
-  <div className="lgpdCard">
-   <span className="pill">LGPD</span>
-   <h2 id="lgpd-title">Privacidade e proteção de dados</h2>
-   <p>O Zynkronyx pode tratar dados pessoais para autenticação, segurança, auditoria, operação e prestação dos serviços, conforme as finalidades e os controles definidos pelo responsável pelo tratamento. Consulte o aviso de privacidade aplicável para conhecer os detalhes do tratamento.</p>
-   <p className="lgpdNote">Versão do aviso: <strong>{POLICY_VERSION}</strong>. Para usuários autenticados, o aceite é registrado no backend com tenant, usuário, versão, finalidade, timestamp do servidor e correlação da requisição.</p>
-   <label className="lgpdCheck"><input type="checkbox" checked={checked} onChange={e=>setChecked(e.target.checked)}/> <span>Li o aviso de privacidade e estou ciente das informações e finalidades nele descritas.</span></label>
-   {message&&<p className="error">{message}</p>}
-   <div className="lgpdActions"><button disabled={!checked||saving} onClick={accept}>{saving?"Registrando…":"Aceitar"}</button>{!authenticated&&<button className="secondary" disabled={saving} onClick={()=>setOpen(false)}>Continuar sem registrar aceite</button>}</div>
-  </div>
- </div>;
-}
 
 function Docs() { return <div className="panel"><p className="lead">Documentação operacional do projeto.</p><div className="row"><div><strong>Architecture</strong><small>Fluxos, componentes e responsabilidades</small></div><span className="status">docs/</span></div><div className="row"><div><strong>Build ALL</strong><small>Critérios de implementação e deploy</small></div><span className="status">BUILD-ALL</span></div><div className="row"><div><strong>API</strong><small>Endpoints públicos atuais</small></div><span className="status">LIVE</span></div></div>; }
 
