@@ -144,7 +144,7 @@ export default function Home() {
       <main className="main">
         <header className="topbar">
           <div><span className="eyebrow">CONTROL CENTER</span><h1>{title(section)}</h1></div>
-          <div className="userChip">PUBLIC <span>●</span></div>
+          <div className="userChip">{typeof window!=="undefined"&&sessionStorage.getItem("zynkronyx_token")?"AUTHENTICATED":"PUBLIC"} <span>●</span></div>
         </header>
         {section === "overview" && <Overview status={status} latency={latency} services={serviceRows} capabilities={capabilities}/>}
         {section === "services" && <Services services={serviceRows}/>}
@@ -197,7 +197,7 @@ function Services({services}) {
 
 function ApiExplorer() {
  const endpoints=["/","/health","/api/status","/api/capabilities"];
- return <div className="panel"><p className="lead">Endpoints públicos do gateway. Cada chamada abre a resposta real do Worker.</p>{endpoints.map(path=><div className="endpoint" key={path}><span className="method">GET</span><code>{path}</code><span className="status">active</span><button onClick={()=>window.open(API+path,"_blank","noopener,noreferrer")}>Open ↗</button></div>)}</div>
+ return <div className="panel"><p className="lead">Endpoints públicos do gateway. Cada chamada abre a resposta real do Worker.</p>{endpoints.map(path=><div className="endpoint" key={path}><span className="method">GET</span><code>{path}</code><span className="status">PUBLIC</span><button onClick={()=>window.open(API+path,"_blank","noopener,noreferrer")}>Open ↗</button></div>)}</div>
 }
 
 
@@ -437,7 +437,7 @@ function SalesCenter({authVersion}) {
   <div className="hero"><div><span className="pill">AI SALES</span><h2>Aceleração Comercial</h2><p>Leads, oportunidades, sinais, próximas ações e copiloto com aprovação humana.</p></div><div className="heroVersion">{opps.length}<br/><small>oportunidades</small></div></div>
   {error&&<div className="panel resultBox">{error}</div>}
   <div className="panel"><div className="sectionTitle"><h3>Novo lead</h3><span>captura idempotente por tenant</span></div><form className="securityForm" onSubmit={createLead}><input placeholder="Nome" required value={lead.name} onChange={e=>setLead({...lead,name:e.target.value})}/><input placeholder="E-mail" value={lead.email} onChange={e=>setLead({...lead,email:e.target.value})}/><input placeholder="Empresa" value={lead.company} onChange={e=>setLead({...lead,company:e.target.value})}/><button type="submit">Criar lead</button></form></div>
-  <div className="stats"><Stat title="Leads" value={leads.length} note="tenant atual"/><Stat title="Oportunidades" value={opps.length} note="pipeline"/><Stat title="AI" value="ON" note="copilot/recommendations"/><Stat title="Mutação AI" value="APPROVAL" note="humano obrigatório"/></div>
+  <div className="stats"><Stat title="Leads" value={leads.length} note="tenant atual"/><Stat title="Oportunidades" value={opps.length} note="pipeline"/><Stat title="AI" value="API" note="copilot/recommendations"/><Stat title="Mutação AI" value="HUMAN APPROVAL" note="governance boundary"/></div>
   <div className="panel"><div className="sectionTitle"><h3>Pipeline</h3><button onClick={load}>{loading?"Atualizando…":"Atualizar"}</button></div>{!opps.length?<div className="emptyState"><h2>Sem oportunidades</h2><p>Crie leads e oportunidades via API para alimentar o pipeline.</p></div>:opps.map(o=><div className="row" key={o.ID}><div><strong>{o.TITLE}</strong><small>Lead {o.LEAD_ID} · {o.STAGE} · {o.STATUS}</small></div><span className="status">{o.PROBABILITY==null?"—":Math.round(Number(o.PROBABILITY)*100)+"%"}</span><div><button onClick={()=>recommend(o.ID)}>Próxima ação</button><button onClick={()=>ask(o.ID)}>Copilot</button></div></div>)}</div>
   {selected&&<div className="panel"><div className="sectionTitle"><h3>Recomendação</h3><button onClick={()=>setSelected(null)}>Fechar</button></div><pre className="resultBox">{JSON.stringify(selected,null,2)}</pre><div><button onClick={()=>mutateAction(selected.ID,"approve")}>Aprovar</button>{" "}<button disabled={selected.STATUS!=="APPROVED"} onClick={()=>mutateAction(selected.ID,"complete")}>Concluir</button></div><small>A recomendação é derivada; a mutação exige aprovação humana e a conclusão só ocorre após aprovação.</small></div>}
   {copilot&&<div className="panel"><div className="sectionTitle"><h3>Copilot comercial</h3><button onClick={()=>setCopilot(null)}>Fechar</button></div><pre className="resultBox">{JSON.stringify(copilot,null,2)}</pre></div>}
@@ -497,7 +497,7 @@ function Audit() {
 }
 
 
-function Docs() { return <div className="panel"><p className="lead">Documentação operacional do projeto.</p><div className="row"><div><strong>Architecture</strong><small>Fluxos, componentes e responsabilidades</small></div><span className="status">docs/</span></div><div className="row"><div><strong>Build ALL</strong><small>Critérios de implementação e deploy</small></div><span className="status">BUILD-ALL</span></div><div className="row"><div><strong>API</strong><small>Endpoints públicos atuais</small></div><span className="status">LIVE</span></div></div>; }
+function Docs() { return <div className="panel"><p className="lead">Documentação operacional do projeto.</p><div className="row"><div><strong>Architecture</strong><small>Fluxos, componentes e responsabilidades</small></div><span className="status">docs/</span></div><div className="row"><div><strong>Build ALL</strong><small>Critérios de implementação e deploy</small></div><span className="status">BUILD-ALL</span></div><div className="row"><div><strong>API</strong><small>Endpoints públicos atuais</small></div><span className="status">PUBLIC API</span></div></div>; }
 
 function Database({capabilities}) {
  const db=findCapability(capabilities,"database");
@@ -507,8 +507,8 @@ function Database({capabilities}) {
 
 function Security({onAuth}) {
  const [login,setLogin]=useState(""); const [password,setPassword]=useState(""); const [message,setMessage]=useState(null); const [loading,setLoading]=useState(false);
- const [privacy,setPrivacy]=useState(null); const [privacyBusy,setPrivacyBusy]=useState(false);
- const logged=typeof window!=="undefined"&&!!sessionStorage.getItem("zynkronyx_token");
+ const [privacy,setPrivacy]=useState(null); const [privacyBusy,setPrivacyBusy]=useState(false); const [logged,setLogged]=useState(false);
+ useEffect(()=>{setLogged(typeof window!=="undefined"&&!!sessionStorage.getItem("zynkronyx_token"))},[]);
  useEffect(()=>{if(!logged)return; let alive=true; fetch(API+"/legal/acceptance?policy_type="+encodeURIComponent(LGPD_POLICY_TYPE),{headers:authHeaders(),cache:"no-store"}).then(r=>r.json()).then(j=>{if(alive)setPrivacy(j.result||null)}).catch(()=>{}); return()=>{alive=false}},[logged]);
  async function submit(e){e.preventDefault();setLoading(true);setMessage(null);try{const r=await fetch(API+"/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({login,password})});const j=await r.json();if(!r.ok)throw new Error(j.erro||"Falha no login");sessionStorage.setItem("zynkronyx_token",j.token);setPassword("");setMessage("Sessão autenticada neste navegador.");onAuth?.()}catch(e){setMessage(e.message)}finally{setLoading(false)}}
  function logout(){sessionStorage.removeItem("zynkronyx_token");setMessage("Sessão encerrada.");onAuth?.()}
