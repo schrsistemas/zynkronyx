@@ -95,3 +95,10 @@ button{min-height:var(--touch-target)}
 .lgpdNote{font-size:12px}.lgpdCheck{display:flex;gap:10px;align-items:flex-start;margin:20px 0;line-height:1.5}.lgpdCheck input{margin-top:4px}
 .lgpdActions{display:flex;gap:10px;justify-content:flex-end}.lgpdActions button:disabled{opacity:.45;cursor:not-allowed}.lgpdActions .secondary{background:transparent;border:1px solid var(--border,#263247)}
 @media(max-width:640px){.lgpdOverlay{padding:12px}.lgpdCard{padding:20px}.lgpdActions{flex-direction:column}.lgpdActions button{width:100%}}
+
+.lgpdSummary{margin:16px 0;padding:14px 16px;border:1px solid var(--border,#263247);border-radius:12px;background:#0b1018}
+.lgpdSummary strong{display:block;font-size:12px;margin-bottom:7px}
+.lgpdSummary ul{margin:0;padding-left:18px;color:var(--muted,#9aa7b8);font-size:12px;line-height:1.65}
+.primaryButton{width:100%;min-height:44px;border:1px solid #3b82f6;border-radius:9px;background:#2563eb;color:#fff;font-weight:700;cursor:pointer;padding:10px 14px}
+.primaryButton:disabled{opacity:.45;cursor:not-allowed}
+.lgpdCard small{display:block;margin-top:12px;color:#6f7b8d;font-size:10px;line-height:1.55}
