@@ -1,11 +1,8 @@
 name: Deploy Control Center
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "frontend/**"
-      - ".github/workflows/deploy-frontend.yml"
+  # Legacy manual deploy only. Production push deploy is handled by
+  # deploy-frontend-live.yml to avoid two workflows publishing the same Pages project.
   workflow_dispatch:
 
 permissions:
