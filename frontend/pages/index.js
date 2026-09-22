@@ -16,8 +16,6 @@ function LgpdAcceptance({authVersion}) {
 
   useEffect(() => {
     if(typeof window === "undefined") return;
-    const key = "zynkronyx_lgpd_acceptance_" + LGPD_POLICY_VERSION;
-    if(localStorage.getItem(key) === "ACCEPT") return;
     let alive = true;
     async function check() {
       const token = sessionStorage.getItem("zynkronyx_token");
@@ -33,7 +31,7 @@ function LgpdAcceptance({authVersion}) {
           const r = await fetch(API + "/legal/acceptance?policy_type=" + encodeURIComponent(LGPD_POLICY_TYPE), {headers:authHeaders(),cache:"no-store"});
           const j = await r.json();
           if(alive && r.ok && j.result?.policy_version === LGPD_POLICY_VERSION && j.result?.action === "ACCEPT") {
-            localStorage.setItem(key,"ACCEPT");
+            setVisible(false);
             return;
           }
       } catch (_) {}
@@ -45,7 +43,6 @@ function LgpdAcceptance({authVersion}) {
 
   async function accept() {
     setBusy(true); setError(null);
-    const key = "zynkronyx_lgpd_acceptance_" + LGPD_POLICY_VERSION;
     try {
       const token = sessionStorage.getItem("zynkronyx_token");
       if(!token) throw new Error("Entre na plataforma para registrar o aceite de forma auditável.");
@@ -56,7 +53,6 @@ function LgpdAcceptance({authVersion}) {
       });
       const j = await r.json();
       if(!r.ok) throw new Error(j.error || j.erro || "Não foi possível registrar o aceite.");
-      localStorage.setItem(key,"ACCEPT");
       setVisible(false);
     } catch(e) {
       setError(e.message);
@@ -68,11 +64,12 @@ function LgpdAcceptance({authVersion}) {
     <div className="lgpdCard">
       <span className="eyebrow">PRIVACIDADE · LGPD</span>
       <h2 id="lgpd-title">Aviso de privacidade</h2>
-      <p>Antes de continuar, consulte o aviso de privacidade vigente do Zynkronyx. O aceite técnico registra a versão do aviso e a evidência da ação.</p>
+      <p>Antes de continuar, confirme que tomou ciência do aviso de privacidade vigente do Zynkronyx. O aceite é registrado no servidor com a versão da política e a evidência da ação.</p>
+      <div className="lgpdSummary"><strong>O que este aviso cobre</strong><ul><li>quais dados podem ser tratados pela plataforma;</li><li>finalidades e controles de segurança aplicáveis;</li><li>registro do aceite e possibilidade de revogação.</li></ul></div>
       <p className="lgpdMeta">Versão vigente: <strong>{LGPD_POLICY_VERSION}</strong></p>
       <label className="lgpdCheck"><input type="checkbox" id="lgpd-confirm" checked={checked} onChange={e=>{setChecked(e.target.checked);setError(null)}}/> <span>Li e estou ciente do aviso de privacidade vigente.</span></label>
       {error && <div className="resultBox">{error}</div>}
-      <button className="primaryButton" disabled={busy || !checked} onClick={accept}>{busy ? "Registrando..." : "Aceitar e continuar"}</button>
+      <button type="button" className="primaryButton" disabled={busy || !checked} onClick={accept}>{busy ? "Registrando..." : "Aceitar e continuar"}</button>
       <small>O aceite não define, por si só, a base legal do tratamento de dados. A política, retenção e atendimento aos direitos dos titulares devem ser definidos pelo responsável pelo tratamento.</small>
     </div>
   </div>;
