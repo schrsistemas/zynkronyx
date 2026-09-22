@@ -8,7 +8,7 @@ const API = process.env.NEXT_PUBLIC_API_URL || "https://mute-grass-9428.schrsist
 const LGPD_POLICY_VERSION = "2026-09-19";
 const LGPD_POLICY_TYPE = "PRIVACY_NOTICE";
 
-function LgpdAcceptance() {
+function LgpdAcceptance({authVersion}) {
   const [visible,setVisible] = useState(false);
   const [busy,setBusy] = useState(false);
   const [error,setError] = useState(null);
@@ -21,21 +21,27 @@ function LgpdAcceptance() {
     let alive = true;
     async function check() {
       const token = sessionStorage.getItem("zynkronyx_token");
-      if(token) {
-        try {
+      if(!token) {
+        if(alive) {
+          setVisible(false);
+          setChecked(false);
+          setError(null);
+        }
+        return;
+      }
+      try {
           const r = await fetch(API + "/legal/acceptance?policy_type=" + encodeURIComponent(LGPD_POLICY_TYPE), {headers:authHeaders(),cache:"no-store"});
           const j = await r.json();
           if(alive && r.ok && j.result?.policy_version === LGPD_POLICY_VERSION && j.result?.action === "ACCEPT") {
             localStorage.setItem(key,"ACCEPT");
             return;
           }
-        } catch (_) {}
-      }
+      } catch (_) {}
       if(alive) setVisible(true);
     }
     check();
     return () => { alive=false; };
-  }, []);
+  }, [authVersion]);
 
   async function accept() {
     setBusy(true); setError(null);
@@ -72,13 +78,6 @@ function LgpdAcceptance() {
   </div>;
 }
 
-const fallbackServices = [
-  ["API Gateway", "unknown", "Worker"],
-  ["Database", "planned", "Configured SGBD"],
-  ["Observability", "planned", "Logs / Metrics"],
-  ["DelphiDBUtils", "development", "FireDAC"],
-];
-
 export default function Home() {
   const [section, setSection] = useState("overview");
   const [status, setStatus] = useState(null);
@@ -112,14 +111,14 @@ export default function Home() {
 
   const serviceRows = [
     ["API Gateway", status?.ok ? "online" : "offline", status?.runtime || "Worker"],
-    ["Database", findCapability(capabilities, "database")?.status || "planned", "Configured SGBD"],
-    ["Observability", "planned", "Tracing"],
-    ["DelphiDBUtils", "development", "FireDAC"],
+    ["Database", findCapability(capabilities, "database")?.status || "not-observed", "Configured SGBD"],
+    ["Observability", "not-observed", "Tracing"],
+    ["DelphiDBUtils", "not-observed", "FireDAC"],
   ];
 
   return (
     <>
-      <LgpdAcceptance />
+      <LgpdAcceptance authVersion={authVersion} />
       <div className="shell">
       <aside className="sidebar">
         <div className="brand"><span className="brandMark">Z</span><div><strong>Zynkronyx</strong><small>Platform</small></div></div>
@@ -183,7 +182,7 @@ function Overview({status,latency,services,capabilities}) {
     <Stat title="API round trip" value={latency ? latency + " ms" : "—"} note="live browser check"/>
     <Stat title="Services" value={services.length} note="registered"/>
     <Stat title="Environment" value={status?.environment?.toUpperCase() || "PUBLIC"} note="serverless"/>
-    <Stat title="Database" value={findCapability(capabilities,"database")?.status === "active" ? "ACTIVE" : "NEXT"} note="data layer"/>
+    <Stat title="Database" value={findCapability(capabilities,"database")?.status || "NOT OBSERVED"} note="gateway capability"/>
   </div>
   <section><div className="sectionTitle"><h3>Service health</h3><span>Live API data</span></div><div className="serviceGrid">{services.map(s=><div className="service" key={s[0]}><div className="serviceIcon">◆</div><div className="serviceName">{s[0]}</div><span className={"status " + (s[1]==="online"?"":"muted")}>{s[1]}</span><div className="serviceMeta">{s[2]}</div></div>)}</div></section>
   <section><div className="sectionTitle"><h3>Architecture</h3><span>Current foundation</span></div><div className="architecture"><div>CLIENTS<span>Delphi · Web · Android</span></div><b>→</b><div>EDGE<span>Cloudflare Worker</span></div><b>→</b><div>BACKEND<span>Node · Express</span></div><b>→</b><div>DATA<span>Configured SGBD</span></div></div></section>
@@ -451,9 +450,9 @@ function Deployments() {
   <div className="hero"><div><span className="pill">DEPLOY PIPELINE</span><h2>Deployments</h2><p>Visão operacional dos artefatos e verificações de publicação.</p></div><div className="heroVersion">GHCR<br/><small>immutable SHA tags</small></div></div>
   <div className="stats"><Stat title="Backend image" value="GHCR" note="published by CI"/><Stat title="Frontend" value="Pages" note="Cloudflare"/><Stat title="Runtime check" value="/health" note="smoke test"/><Stat title="Rollback" value="SHA" note="immutable tag"/></div>
   <div className="panel"><p className="lead">Contrato atual</p>
-   <div className="row"><div><strong>Backend container</strong><small>Dockerfile.prod.fix → GHCR → runtime externo configurado</small></div><span className="status">VERIFIED</span></div>
-   <div className="row"><div><strong>Control Center</strong><small>Next.js static export → Cloudflare Pages</small></div><span className="status">LIVE</span></div>
-   <div className="row"><div><strong>Production boundary</strong><small>CI não é tratado como servidor persistente</small></div><span className="status">ENFORCED</span></div>
+   <div className="row"><div><strong>Backend container</strong><small>Dockerfile.prod.fix → GHCR → runtime externo configurado</small></div><span className="status">PIPELINE</span></div>
+   <div className="row"><div><strong>Control Center</strong><small>Next.js static export → Cloudflare Pages</small></div><span className="status">DEPLOY TARGET</span></div>
+   <div className="row"><div><strong>Production boundary</strong><small>CI não é tratado como servidor persistente</small></div><span className="status">CONTRACT</span></div>
   </div>
  </div>;
 }
@@ -497,58 +496,12 @@ function Audit() {
  </div>;
 }
 
-function LgpdConsent() {
- const KEY="zynkronyx_lgpd_consent_v1";
- const POLICY_VERSION="v1";
- const POLICY_TYPE="PRIVACY_NOTICE";
- const [open,setOpen]=useState(false);
- const [checked,setChecked]=useState(false);
- const [saving,setSaving]=useState(false);
- const [message,setMessage]=useState(null);
- const [authenticated,setAuthenticated]=useState(false);
- useEffect(()=>{let active=true;(async()=>{try{
-   const local=localStorage.getItem(KEY)==="accepted";
-   const token=sessionStorage.getItem("zynkronyx_token");
-   if(!token){if(active){setAuthenticated(false);setOpen(!local)}return;}
-   if(active)setAuthenticated(true);
-   const r=await fetch(API+"/legal/acceptance?policy_type="+encodeURIComponent(POLICY_TYPE),{headers:authHeaders()});
-   const j=await r.json().catch(()=>({}));
-   if(active)setOpen(!(r.ok&&j.result&&j.result.ACTION==="ACCEPT"&&j.result.POLICY_VERSION===POLICY_VERSION));
- }catch(_){if(active){try{setOpen(localStorage.getItem(KEY)!=="accepted")}catch(__){setOpen(false)}}}})();return()=>{active=false}},[]);
- async function accept(){
-   if(!checked||saving)return;
-   setSaving(true);setMessage(null);
-   try{
-     const token=sessionStorage.getItem("zynkronyx_token");
-     if(token){
-       const r=await fetch(API+"/legal/acceptance",{method:"POST",headers:{"Content-Type":"application/json",...authHeaders()},body:JSON.stringify({policy_type:POLICY_TYPE,policy_version:POLICY_VERSION,action:"ACCEPT",source:"control-center"})});
-       const j=await r.json().catch(()=>({}));
-       if(!r.ok)throw new Error(j.error||"Não foi possível registrar o aceite no servidor.");
-     }
-     try{localStorage.setItem(KEY,"accepted")}catch(_){}
-     setOpen(false);
-   }catch(e){setMessage(e.message||"Falha ao registrar o aceite.");}
-   finally{setSaving(false)}
- }
- if(!open)return null;
- return <div className="lgpdOverlay" role="dialog" aria-modal="true" aria-labelledby="lgpd-title">
-  <div className="lgpdCard">
-   <span className="pill">LGPD</span>
-   <h2 id="lgpd-title">Privacidade e proteção de dados</h2>
-   <p>O Zynkronyx pode tratar dados pessoais para autenticação, segurança, auditoria, operação e prestação dos serviços, conforme as finalidades e os controles definidos pelo responsável pelo tratamento. Consulte o aviso de privacidade aplicável para conhecer os detalhes do tratamento.</p>
-   <p className="lgpdNote">Versão do aviso: <strong>{POLICY_VERSION}</strong>. Para usuários autenticados, o aceite é registrado no backend com tenant, usuário, versão, finalidade, timestamp do servidor e correlação da requisição.</p>
-   <label className="lgpdCheck"><input type="checkbox" checked={checked} onChange={e=>setChecked(e.target.checked)}/> <span>Li o aviso de privacidade e estou ciente das informações e finalidades nele descritas.</span></label>
-   {message&&<p className="error">{message}</p>}
-   <div className="lgpdActions"><button disabled={!checked||saving} onClick={accept}>{saving?"Registrando…":"Aceitar"}</button>{!authenticated&&<button className="secondary" disabled={saving} onClick={()=>setOpen(false)}>Continuar sem registrar aceite</button>}</div>
-  </div>
- </div>;
-}
 
 function Docs() { return <div className="panel"><p className="lead">Documentação operacional do projeto.</p><div className="row"><div><strong>Architecture</strong><small>Fluxos, componentes e responsabilidades</small></div><span className="status">docs/</span></div><div className="row"><div><strong>Build ALL</strong><small>Critérios de implementação e deploy</small></div><span className="status">BUILD-ALL</span></div><div className="row"><div><strong>API</strong><small>Endpoints públicos atuais</small></div><span className="status">LIVE</span></div></div>; }
 
 function Database({capabilities}) {
  const db=findCapability(capabilities,"database");
- return <div className="emptyState"><div className="bigIcon">▣</div><h2>Data layer</h2><p>Status informado pela API: <strong>{db?.status || "planned"}</strong>. A camada de dados operacional é definida pelo SGBD configurado no deployment. A interface exibirá dados reais quando a API autenticada de banco estiver disponível.</p><div className="progress"><span style={{width:db?.status==="active"?"100%":"42%"}}/></div><small>{db?.status==="active"?"Connected":"Foundation"}</small></div>
+ return <div className="emptyState"><div className="bigIcon">▣</div><h2>Data layer</h2><p>Status informado pelo gateway: <strong>{db?.status || "not-observed"}</strong>. Isso representa a capacidade declarada pelo gateway; não é prova de conexão ativa com o banco. A prontidão real é validada pelo endpoint <code>/ready</code> no pipeline.</p><small>Sem percentual fictício de progresso.</small></div>
 }
 
 
