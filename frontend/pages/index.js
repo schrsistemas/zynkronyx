@@ -139,7 +139,7 @@ export default function Home() {
           <Nav active={section==="deploy"} onClick={()=>setSection("deploy")} icon="⇧">Deployments</Nav>
           <Nav active={section==="docs"} onClick={()=>setSection("docs")} icon="?">Docs</Nav>
         </nav>
-        <div className="sideBottom"><span className={"dot " + (status?.ok ? "online" : "")}/> {status?.ok ? "All systems operational" : "Checking services..."}</div>
+        <div className="sideBottom"><span className={"dot " + (status?.ok ? "online" : "")}/> {status?.ok ? (status?.backend === "configured" ? "Gateway + backend configured" : "Gateway online · backend not configured") : "Checking gateway..."}</div>
       </aside>
       <main className="main">
         <header className="topbar">
@@ -180,12 +180,12 @@ function Overview({status,latency,services,capabilities}) {
   </div>
   <div className="stats">
     <Stat title="API round trip" value={latency ? latency + " ms" : "—"} note="live browser check"/>
-    <Stat title="Services" value={services.length} note="registered"/>
+    <Stat title="Checks" value={services.length} note="observed service checks"/>
     <Stat title="Environment" value={status?.environment?.toUpperCase() || "PUBLIC"} note="serverless"/>
     <Stat title="Database" value={findCapability(capabilities,"database")?.status || "NOT OBSERVED"} note="gateway capability"/>
   </div>
   <section><div className="sectionTitle"><h3>Service health</h3><span>Live API data</span></div><div className="serviceGrid">{services.map(s=><div className="service" key={s[0]}><div className="serviceIcon">◆</div><div className="serviceName">{s[0]}</div><span className={"status " + (s[1]==="online"?"":"muted")}>{s[1]}</span><div className="serviceMeta">{s[2]}</div></div>)}</div></section>
-  <section><div className="sectionTitle"><h3>Architecture</h3><span>Current foundation</span></div><div className="architecture"><div>CLIENTS<span>Delphi · Web · Android</span></div><b>→</b><div>EDGE<span>Cloudflare Worker</span></div><b>→</b><div>BACKEND<span>Node · Express</span></div><b>→</b><div>DATA<span>Configured SGBD</span></div></div></section>
+  <section><div className="sectionTitle"><h3>Architecture</h3><span>Current foundation</span></div><div className="architecture"><div>CLIENTS<span>Delphi · Web · Android</span></div><b>→</b><div>EDGE<span>Cloudflare Worker</span></div><b>→</b><div>BACKEND<span>Node · Express</span></div><b>→</b><div>DATA<span>{findCapability(capabilities,"database")?.status || "not-observed"}</span></div></div></section>
  </div>
 }
 
