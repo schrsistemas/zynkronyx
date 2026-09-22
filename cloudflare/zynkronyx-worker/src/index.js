@@ -118,7 +118,7 @@ function publicResponse(request, path, env) {
       service: "zynkronyx-gateway",
       version: VERSION,
       runtime: "cloudflare-workers",
-      backend: "configured",
+      backend: env?.BACKEND_URL ? "configured" : "not-configured",
       timestamp: now(),
     }, 200, request);
   }
@@ -129,11 +129,11 @@ function publicResponse(request, path, env) {
       { name: "health", method: "GET", path: "/health", status: "active" },
       { name: "status", method: "GET", path: "/api/status", status: "active" },
       { name: "capabilities", method: "GET", path: "/api/capabilities", status: "active" },
-      { name: "database", status: "backend", target: "configured transactional SGBD" },
-      { name: "authentication", status: "backend" },
-      { name: "device-events", method: "POST", path: "/integration/events", status: "backend" },
-      { name: "audit", method: "GET", path: "/audit/events", status: "backend" },
-      { name: "sync", status: "backend", target: "configured transactional SGBD" },
+      { name: "database", status: env?.BACKEND_URL ? "backend" : "not-configured", target: "configured transactional SGBD" },
+      { name: "authentication", status: env?.BACKEND_URL ? "backend" : "not-configured" },
+      { name: "device-events", method: "POST", path: "/integration/events", status: env?.BACKEND_URL ? "backend" : "not-configured" },
+      { name: "audit", method: "GET", path: "/audit/events", status: env?.BACKEND_URL ? "backend" : "not-configured" },
+      { name: "sync", status: env?.BACKEND_URL ? "backend" : "not-configured", target: "configured transactional SGBD" },
     ],
     timestamp: now(),
   }, 200, request);
