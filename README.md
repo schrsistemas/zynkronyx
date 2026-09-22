@@ -4,6 +4,13 @@ Plataforma de integração, sincronização e inteligência operacional para sis
 
 > O projeto evoluiu além de uma simples API de sincronização. O Zynkronyx hoje é estruturado como uma plataforma de integração + dados + conhecimento + IA controlada, mantendo o SGBD transacional configurado como fonte de verdade.
 
+## Acesso público
+
+- **Control Center:** https://zynkronyx-control-center.pages.dev/
+- **Gateway / API:** https://mute-grass-9428.schrsistemas.workers.dev/
+
+O Control Center é o frontend público. O Gateway é a camada HTTP/Edge que expõe os endpoints da plataforma; endpoints protegidos continuam exigindo autenticação e escopo de tenant.
+
 ## Visão atual
 
 O Zynkronyx conecta:
