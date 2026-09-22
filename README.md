@@ -350,6 +350,7 @@ Variáveis relevantes incluem:
 Segredos e credenciais não devem ser armazenados no repositório.
 
 ## Estado operacional — 22/09/2026
+- Pipeline: o deploy automático de produção do Control Center fica centralizado em `deploy-frontend-live.yml`; o workflow legado `deploy-frontend.yml` permanece apenas manual para evitar publicação dupla.
 
 - Control Center público: https://zynkronyx-control-center.pages.dev/
 - Gateway público: https://mute-grass-9428.schrsistemas.workers.dev/
