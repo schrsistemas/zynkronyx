@@ -349,6 +349,14 @@ Variáveis relevantes incluem:
 
 Segredos e credenciais não devem ser armazenados no repositório.
 
+## Estado operacional — 22/09/2026
+
+- Control Center público: https://zynkronyx-control-center.pages.dev/
+- Gateway público: https://mute-grass-9428.schrsistemas.workers.dev/
+- Fluxo LGPD do Control Center corrigido para consultar o aceite no servidor após autenticação, sem reutilizar aceite de outro usuário pelo armazenamento local compartilhado do navegador.
+- A tela de aceite agora explicita a confirmação, apresenta um resumo do aviso e possui ação visualmente consistente em telas móveis.
+- Gateway e frontend possuem pipelines separados de deploy e smoke tests no GitHub Actions.
+
 ## Estado do projeto
 
 O projeto está em evolução ativa. A arquitetura atual já contempla:
