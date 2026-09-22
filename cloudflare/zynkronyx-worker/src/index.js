@@ -1,6 +1,6 @@
 import { ZynkronyxOrchestration } from "./workflow.js";
 
-const VERSION = "0.3.6";
+const VERSION = "0.3.7";
 const PUBLIC_ORIGIN = "https://zynkronyx-control-center.pages.dev";
 const PUBLIC_PATHS = new Set(["/", "/health", "/api/status", "/api/capabilities"]);
 const GATEWAY_PREFIXES = ["/auth", "/sync", "/integration", "/audit", "/ai", "/sales", "/fiscal", "/admin", "/legal", "/metrics", "/ready"];
