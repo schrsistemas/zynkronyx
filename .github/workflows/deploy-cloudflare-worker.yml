@@ -58,7 +58,14 @@ jobs:
 
       - name: Smoke test status endpoint
         run: |
-          curl --fail --silent --show-error --retry 5 --retry-delay 2             https://mute-grass-9428.schrsistemas.workers.dev/api/status
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 5 --retry-delay 2             https://mute-grass-9428.schrsistemas.workers.dev/api/status | tee /tmp/status.json
+          grep -q '"backend": "configured"' /tmp/status.json
+
+      - name: Smoke test backend readiness through gateway
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 5 --retry-delay 2             https://mute-grass-9428.workers.dev/ready
 
       - name: Smoke test capabilities endpoint
         run: |
