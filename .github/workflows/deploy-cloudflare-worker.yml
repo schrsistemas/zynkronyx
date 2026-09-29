@@ -28,6 +28,16 @@ jobs:
       # The deploy must not require the same value to exist in GitHub Actions.
       # This prevents a missing GitHub repository secret from blocking deployment
       # or accidentally replacing a valid production secret.
+      - name: Verify Worker tenant secret
+        working-directory: cloudflare/zynkronyx-worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          secrets="$(npx wrangler secret list --name mute-grass-9428 --format json)"
+          echo "$secrets" | grep -q '"name"[[:space:]]*:[[:space:]]*"TENANT_API_KEY"'
+          echo "TENANT_API_KEY is configured in the Cloudflare Worker."
       - name: Deploy to Cloudflare
         uses: cloudflare/wrangler-action@v4
         with:
