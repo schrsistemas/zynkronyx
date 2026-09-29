@@ -29,23 +29,10 @@ jobs:
         working-directory: frontend
         run: npm install
 
-      - name: Verify Control Center tenant configuration
-        working-directory: frontend
-        env:
-          NEXT_PUBLIC_TENANT_API_KEY: ${{ secrets.NEXT_PUBLIC_TENANT_API_KEY }}
-        run: |
-          set -euo pipefail
-          if [ -z "${NEXT_PUBLIC_TENANT_API_KEY:-}" ]; then
-            echo "NEXT_PUBLIC_TENANT_API_KEY is not configured in GitHub Actions."
-            echo "Refusing to publish a frontend that cannot call tenant-scoped production APIs."
-            exit 1
-          fi
-
       - name: Build Control Center
         working-directory: frontend
         env:
           NEXT_PUBLIC_API_URL: https://mute-grass-9428.schrsistemas.workers.dev
-          NEXT_PUBLIC_TENANT_API_KEY: ${{ secrets.NEXT_PUBLIC_TENANT_API_KEY }}
         run: npm run build
 
       - name: Verify build output
