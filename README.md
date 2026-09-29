@@ -354,6 +354,8 @@ Segredos e credenciais não devem ser armazenados no repositório.
 - Estado de autenticação do cabeçalho passou a ser derivado após hidratação no navegador, evitando leitura direta de sessionStorage durante renderização inicial.
 - Navegação lateral recebeu rótulos acessíveis/tooltip para os botões icon-only em telas estreitas.
 - O código foi alterado no `main`; a publicação efetiva depende da execução do workflow `deploy-frontend-live.yml`.
+- O workflow exige `NEXT_PUBLIC_TENANT_API_KEY` como secret do GitHub Actions antes de publicar o frontend; isso impede deploy de uma build sem acesso às rotas tenant-scoped.
+- A configuração de desenvolvimento do Control Center está documentada em `frontend/.env.example`.
 
 ## Estado operacional — 22/09/2026
 - Pipeline: o deploy automático de produção do Control Center fica centralizado em `deploy-frontend-live.yml`; o workflow legado `deploy-frontend.yml` permanece apenas manual para evitar publicação dupla.
