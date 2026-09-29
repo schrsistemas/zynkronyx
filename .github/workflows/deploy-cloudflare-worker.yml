@@ -54,6 +54,7 @@ jobs:
           grep -q '"service": "zynkronyx-gateway"' /tmp/health.json
           grep -q '"version":' /tmp/health.json
           grep -q '"backend": "configured"' /tmp/health.json
+          grep -q '"tenant": "configured"' /tmp/health.json
 
       - name: Smoke test CORS preflight
         run: |
