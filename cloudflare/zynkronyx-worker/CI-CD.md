@@ -16,9 +16,10 @@ Create these repository secrets in:
 
 1. `CLOUDFLARE_API_TOKEN`
 2. `CLOUDFLARE_ACCOUNT_ID`
-3. `TENANT_API_KEY` — application secret for the production tenant used by the Gateway when forwarding tenant-scoped requests.
 
 The API token should be scoped to the Cloudflare account used by this Worker and have the permissions required to deploy Workers. Do not commit the token to the repository.
+
+The tenant application key is **not** a GitHub Actions secret. It is a Cloudflare Worker runtime secret and is checked before deployment so the Gateway cannot be published in a configuration that cannot authenticate tenant-scoped backend requests.
 
 ## Deployment
 
