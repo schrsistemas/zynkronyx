@@ -12,6 +12,10 @@ O navegador registra a versão aceita para controlar a experiência da interface
 
 O `localStorage` continua sendo apenas mecanismo de experiência de usuário e não constitui, sozinho, prova jurídica de consentimento. Para operações autenticadas, o endpoint `/legal/acceptance` persiste a evidência técnica no SGBD transacional configurado.
 
+## Recuperação de sessão inválida
+
+O Control Center não mantém o usuário preso ao modal de privacidade quando o bearer token expira ou é rejeitado pelo backend. Respostas 401/403 removem a sessão inválida do navegador e devolvem a interface ao estado de autenticação, evitando um ciclo em que o aceite não poderia ser registrado.
+
 ## Minimização
 
 Não armazenar dados pessoais desnecessários no navegador. Política de retenção, controle de acesso, atendimento aos direitos dos titulares e base legal devem ser definidos pelo responsável pelo tratamento.
