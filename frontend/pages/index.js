@@ -202,7 +202,11 @@ function Nav({active,onClick,icon,children}) {
   >{icon} <span>{children}</span></button>;
 }
 function title(s) { return ({overview:"System Overview",services:"Services",api:"API Explorer",database:"Database",sync:"Synchronization",devices:"Device Integrations",audit:"Legal Audit",deploy:"Deployments",docs:"Documentation",integrations:"Integrations & Simulator",monitoring:"Monitoring",radar:"Radar Visual",security:"Security",ai:"AI / RAG",sales:"AI Sales"})[s] || "Zynkronyx"; }
-function authHeaders(){ if(typeof window==="undefined") return {}; const token=sessionStorage.getItem("zynkronyx_token"); const key=process.env.NEXT_PUBLIC_TENANT_API_KEY; return {...(key?{"x-api-key":key}:{}),...(token?{Authorization:"Bearer "+token}:{})}; }
+function authHeaders(){
+  if(typeof window==="undefined") return {};
+  const token=sessionStorage.getItem("zynkronyx_token");
+  return token ? {Authorization:"Bearer "+token} : {};
+}
 function findCapability(list,name) { return list.find(x => x.name === name); }
 
 function Overview({status,latency,services,capabilities}) {
@@ -548,11 +552,11 @@ function Security({onAuth,authVersion}) {
  return <div>
   <div className="hero"><div><span className="pill">AUTHENTICATION</span><h2>Security Center</h2><p>Credenciais de produção são obtidas pelo endpoint de login; nenhum bearer token é mantido no código da interface.</p></div><div className="heroVersion">{logged?"AUTHENTICATED":"SIGNED OUT"}<br/><small>sessionStorage</small></div></div>
   <div className="panel securityPanel">
-   <div className="sectionTitle"><h3>{logged?"Sessão atual":"Entrar"}</h3><span>tenant key via NEXT_PUBLIC_TENANT_API_KEY</span></div>
+   <div className="sectionTitle"><h3>{logged?"Sessão atual":"Entrar"}</h3><span>tenant identity via Cloudflare Gateway</span></div>
    {!logged?<form className="securityForm" onSubmit={submit}><input value={login} onChange={e=>setLogin(e.target.value)} placeholder="Login" autoComplete="username" required/><input value={password} onChange={e=>setPassword(e.target.value)} type="password" placeholder="Senha" autoComplete="current-password" required/><button type="submit">{loading?"Autenticando...":"Entrar"}</button></form>:<div className="securityActions"><button onClick={logout}>Encerrar sessão</button></div>}
    {message&&<div className="resultBox">{message}</div>}
   </div>
   {logged&&<div className="panel"><div className="sectionTitle"><h3>Privacidade e LGPD</h3><span>evidência server-side</span></div><div className="row"><div><strong>Aviso de privacidade</strong><small>{privacy?.policy_version||"Sem registro"} · {privacy?.action||"Pendente"}</small></div><span className={"status "+(privacy?.action==="ACCEPT"?"":"muted")}>{privacy?.action||"NOT REGISTERED"}</span></div><button disabled={privacyBusy||privacy?.action!=="ACCEPT"} onClick={async()=>{if(!window.confirm("Registrar revogação do aceite do aviso de privacidade?"))return;setPrivacyBusy(true);try{const r=await fetch(API+"/legal/acceptance",{method:"POST",headers:{"Content-Type":"application/json",...authHeaders()},body:JSON.stringify({policy_type:LGPD_POLICY_TYPE,policy_version:privacy?.policy_version||LGPD_POLICY_VERSION,action:"REVOKE",source:"security-center"})});const j=await r.json();if(!r.ok)throw new Error(j.error||"Falha ao revogar");setPrivacy(j.result);localStorage.removeItem("zynkronyx_lgpd_acceptance_"+LGPD_POLICY_VERSION);setMessage("Revogação registrada no servidor.");}catch(e){setMessage(e.message)}finally{setPrivacyBusy(false)}}}>{privacyBusy?"Registrando...":"Revogar aceite"}</button></div>}
-  <div className="panel"><div className="row"><div><strong>Bearer token</strong><small>Recebido somente após login e mantido na sessão do navegador.</small></div><span className="status">NO MOCK</span></div><div className="row"><div><strong>Tenant API key</strong><small>Configuração pública do Control Center; nunca usar valor de demonstração em produção.</small></div><span className={process.env.NEXT_PUBLIC_TENANT_API_KEY?"status":"status muted"}>{process.env.NEXT_PUBLIC_TENANT_API_KEY?"CONFIGURED":"NOT CONFIGURED"}</span></div></div>
+  <div className="panel"><div className="row"><div><strong>Bearer token</strong><small>Recebido somente após login e mantido na sessão do navegador.</small></div><span className="status">NO MOCK</span></div><div className="row"><div><strong>Tenant API key</strong><small>Configuração pública do Control Center; nunca usar valor de demonstração em produção.</small></div><span className=status">SERVER-SIDE GATEWAY</span></div></div>
  </div>;
 }
