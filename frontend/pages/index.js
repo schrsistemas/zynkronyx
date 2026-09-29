@@ -8,7 +8,7 @@ const API = process.env.NEXT_PUBLIC_API_URL || "https://mute-grass-9428.schrsist
 const LGPD_POLICY_VERSION = "2026-09-19";
 const LGPD_POLICY_TYPE = "PRIVACY_NOTICE";
 
-function LgpdAcceptance({authVersion}) {
+function LgpdAcceptance({authVersion,onAuth}) {
   const [visible,setVisible] = useState(false);
   const [busy,setBusy] = useState(false);
   const [error,setError] = useState(null);
@@ -29,9 +29,21 @@ function LgpdAcceptance({authVersion}) {
       }
       try {
           const r = await fetch(API + "/legal/acceptance?policy_type=" + encodeURIComponent(LGPD_POLICY_TYPE), {headers:authHeaders(),cache:"no-store"});
+          if(r.status === 401 || r.status === 403) {
+            sessionStorage.removeItem("zynkronyx_token");
+            if(alive) {
+              setVisible(false);
+              setChecked(false);
+              setError(null);
+              onAuth?.();
+            }
+            return;
+          }
           const j = await r.json();
           if(alive && r.ok && j.result?.policy_version === LGPD_POLICY_VERSION && j.result?.action === "ACCEPT") {
             setVisible(false);
+            setChecked(false);
+            setError(null);
             return;
           }
       } catch (_) {}
@@ -51,9 +63,18 @@ function LgpdAcceptance({authVersion}) {
         headers:{"Content-Type":"application/json",...authHeaders()},
         body:JSON.stringify({policy_type:LGPD_POLICY_TYPE,policy_version:LGPD_POLICY_VERSION,action:"ACCEPT",source:"control-center"})
       });
+      if(r.status === 401 || r.status === 403) {
+        sessionStorage.removeItem("zynkronyx_token");
+        setVisible(false);
+        setChecked(false);
+        setError(null);
+        onAuth?.();
+        return;
+      }
       const j = await r.json();
       if(!r.ok) throw new Error(j.error || j.erro || "Não foi possível registrar o aceite.");
       setVisible(false);
+      setChecked(false);
     } catch(e) {
       setError(e.message);
     } finally { setBusy(false); }
@@ -81,6 +102,12 @@ export default function Home() {
   const [capabilities, setCapabilities] = useState([]);
   const [latency, setLatency] = useState(null);
   const [authVersion, setAuthVersion] = useState(0);
+  const [authenticated, setAuthenticated] = useState(false);
+
+  useEffect(() => {
+    if(typeof window === "undefined") return;
+    setAuthenticated(!!sessionStorage.getItem("zynkronyx_token"));
+  }, [authVersion]);
 
   useEffect(() => {
     let alive = true;
@@ -115,7 +142,7 @@ export default function Home() {
 
   return (
     <>
-      <LgpdAcceptance authVersion={authVersion} />
+      <LgpdAcceptance authVersion={authVersion} onAuth={()=>setAuthVersion(v=>v+1)} />
       <div className="shell">
       <aside className="sidebar">
         <div className="brand"><span className="brandMark">Z</span><div><strong>Zynkronyx</strong><small>Platform</small></div></div>
@@ -141,7 +168,7 @@ export default function Home() {
       <main className="main">
         <header className="topbar">
           <div><span className="eyebrow">CONTROL CENTER</span><h1>{title(section)}</h1></div>
-          <div className="userChip">{typeof window!=="undefined"&&sessionStorage.getItem("zynkronyx_token")?"AUTHENTICATED":"PUBLIC"} <span>●</span></div>
+          <div className="userChip">{authenticated?"AUTHENTICATED":"PUBLIC"} <span className={authenticated?"authDot on":"authDot"}>●</span></div>
         </header>
         {section === "overview" && <Overview status={status} latency={latency} services={serviceRows} capabilities={capabilities}/>}
         {section === "services" && <Services services={serviceRows}/>}
@@ -164,7 +191,16 @@ export default function Home() {
   );
 }
 
-function Nav({active,onClick,icon,children}) { return <button className={active?"active":""} onClick={onClick}>{icon} <span>{children}</span></button>; }
+function Nav({active,onClick,icon,children}) {
+  return <button
+    type="button"
+    className={active?"active":""}
+    onClick={onClick}
+    title={children}
+    aria-label={children}
+    aria-current={active?"page":undefined}
+  >{icon} <span>{children}</span></button>;
+}
 function title(s) { return ({overview:"System Overview",services:"Services",api:"API Explorer",database:"Database",sync:"Synchronization",devices:"Device Integrations",audit:"Legal Audit",deploy:"Deployments",docs:"Documentation",integrations:"Integrations & Simulator",monitoring:"Monitoring",radar:"Radar Visual",security:"Security",ai:"AI / RAG",sales:"AI Sales"})[s] || "Zynkronyx"; }
 function authHeaders(){ if(typeof window==="undefined") return {}; const token=sessionStorage.getItem("zynkronyx_token"); const key=process.env.NEXT_PUBLIC_TENANT_API_KEY; return {...(key?{"x-api-key":key}:{}),...(token?{Authorization:"Bearer "+token}:{})}; }
 function findCapability(list,name) { return list.find(x => x.name === name); }
