@@ -9,7 +9,7 @@ function corsHeaders(origin) {
   return {
     "access-control-allow-origin": origin === PUBLIC_ORIGIN ? origin : PUBLIC_ORIGIN,
     "access-control-allow-methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
-    "access-control-allow-headers": "Authorization,Content-Type,x-api-key,x-device-id,x-device-credential,x-correlation-id",
+    "access-control-allow-headers": "Authorization,Content-Type,x-api-key,x-device-id,x-device-credential,x-correlation-id,idempotency-key",
     "access-control-expose-headers": "content-type,x-correlation-id",
     "access-control-max-age": "86400",
     "vary": "Origin",
