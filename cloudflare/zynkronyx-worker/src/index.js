@@ -35,19 +35,25 @@ function isGatewayPath(path) {
   return GATEWAY_PREFIXES.some((prefix) => path === prefix || path.startsWith(prefix + "/"));
 }
 
-function forwardedHeaders(request) {
+function forwardedHeaders(request, env) {
   const headers = new Headers();
+
   for (const name of [
     "authorization",
     "content-type",
-    "x-api-key",
     "x-device-id",
     "x-device-credential",
     "x-correlation-id",
+    "idempotency-key",
   ]) {
     const value = request.headers.get(name);
     if (value) headers.set(name, value);
   }
+
+  // Tenant identity is a server-side gateway concern.
+  // Never forward a browser-supplied x-api-key to the backend.
+  if (env?.TENANT_API_KEY) headers.set("x-api-key", env.TENANT_API_KEY);
+
   return headers;
 }
 
@@ -60,7 +66,7 @@ async function proxy(request, env, path) {
   const target = new URL(base + path + new URL(request.url).search);
   const init = {
     method: request.method,
-    headers: forwardedHeaders(request),
+    headers: forwardedHeaders(request, env),
     redirect: "manual",
   };
 
