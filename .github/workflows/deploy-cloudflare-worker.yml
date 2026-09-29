@@ -24,7 +24,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      # BACKEND_URL is intentionally managed as a Cloudflare Worker secret.
+      # TENANT_API_KEY is intentionally managed as a Cloudflare Worker secret.
       # The deploy must not require the same value to exist in GitHub Actions.
       # This prevents a missing GitHub repository secret from blocking deployment
       # or accidentally replacing a valid production secret.
