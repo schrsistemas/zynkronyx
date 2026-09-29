@@ -116,6 +116,7 @@ function publicResponse(request, path, env) {
       status: "healthy",
       version: VERSION,
       backend: env?.BACKEND_URL ? "configured" : "not-configured",
+      tenant: env?.TENANT_API_KEY ? "configured" : "not-configured",
       timestamp: now(),
     }, 200, request);
   }
@@ -127,6 +128,7 @@ function publicResponse(request, path, env) {
       version: VERSION,
       runtime: "cloudflare-workers",
       backend: env?.BACKEND_URL ? "configured" : "not-configured",
+      tenant: env?.TENANT_API_KEY ? "configured" : "not-configured",
       timestamp: now(),
     }, 200, request);
   }
