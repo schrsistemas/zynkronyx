@@ -349,6 +349,12 @@ Variáveis relevantes incluem:
 
 Segredos e credenciais não devem ser armazenados no repositório.
 
+## Estado operacional — 28/09/2026
+- Correção de sessão no Control Center: respostas HTTP 401/403 durante a verificação ou registro do aceite LGPD agora encerram o bearer inválido e devolvem a interface ao fluxo de autenticação, evitando modal preso.
+- Estado de autenticação do cabeçalho passou a ser derivado após hidratação no navegador, evitando leitura direta de sessionStorage durante renderização inicial.
+- Navegação lateral recebeu rótulos acessíveis/tooltip para os botões icon-only em telas estreitas.
+- O código foi alterado no `main`; a publicação efetiva depende da execução do workflow `deploy-frontend-live.yml`.
+
 ## Estado operacional — 22/09/2026
 - Pipeline: o deploy automático de produção do Control Center fica centralizado em `deploy-frontend-live.yml`; o workflow legado `deploy-frontend.yml` permanece apenas manual para evitar publicação dupla.
 
