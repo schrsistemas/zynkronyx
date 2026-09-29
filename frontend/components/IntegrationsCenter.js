@@ -6,8 +6,7 @@ const TYPES = ["arduino","raspberry-pi","pic","android","ios","delphi","simulato
 function headers() {
   if (typeof window === "undefined") return {"Content-Type":"application/json"};
   const token = sessionStorage.getItem("zynkronyx_token");
-  const key = process.env.NEXT_PUBLIC_TENANT_API_KEY;
-  return {"Content-Type":"application/json", ...(key ? {"x-api-key":key}:{}), ...(token ? {Authorization:"Bearer "+token}: {})};
+  return {"Content-Type":"application/json", ...(token ? {Authorization:"Bearer "+token}: {})};
 }
 
 export default function IntegrationsCenter() {
