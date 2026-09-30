@@ -3,6 +3,7 @@ const catalog = require('./metric.catalog');
 const periods = require('./period.resolver');
 const builder = require('./query.builder');
 const audit = require('../services/security.audit.service');
+const insightRepo = require('./insight.repository');
 
 function invalidQuery(details) {
   const error = new Error('ANALYTICS_INVALID_QUERY');
@@ -266,7 +267,19 @@ function summarizeInsight(metric, current, previous) {
   if (variation === null) type = 'NEW_BASELINE';
   else if (variation >= 0.10) type = 'POSITIVE_TREND';
   else if (variation <= -0.10) type = 'NEGATIVE_TREND';
-  else type = 'STABLE';
+
+  const coverage = current.data.length > 0 && previous.data.length > 0
+    ? 1
+    : (current.data.length > 0 || previous.data.length > 0 ? 0.5 : 0);
+
+  const variationPercent = variation === null ? null : Number((variation * 100).toFixed(2));
+  const title = type === 'POSITIVE_TREND'
+    ? metric.label + ' em alta'
+    : type === 'NEGATIVE_TREND'
+      ? metric.label + ' em queda'
+      : type === 'NEW_BASELINE'
+        ? metric.label + ' com nova base de comparação'
+        : metric.label + ' estável';
 
   return {
     type,
@@ -274,13 +287,16 @@ function summarizeInsight(metric, current, previous) {
     label: metric.label,
     current: currentTotal,
     previous: previousTotal,
+    baseline: previousTotal,
     variation,
-    variation_percent: variation === null ? null : Number((variation * 100).toFixed(2)),
+    variation_percent: variationPercent,
+    title,
     evidence: {
       current_period: current.period,
       previous_period: previous.period,
       current_points: current.data.length,
-      previous_points: previous.data.length
+      previous_points: previous.data.length,
+      coverage
     },
     explanation: variation === null
       ? (currentTotal === 0 ? 'Não houve valor no período atual nem no período anterior.' : 'O período anterior não possui base numérica; a variação percentual não é calculada.')
@@ -292,13 +308,15 @@ function summarizeInsight(metric, current, previous) {
     methodology: {
       kind: 'DETERMINISTIC',
       threshold: 0.10,
-      source: 'ANALYTICS_QUERY'
+      source: 'ANALYTICS_QUERY',
+      baseline: 'PREVIOUS_EQUIVALENT_PERIOD'
     }
   };
 }
 
 async function getInsight(tenantId, input = {}) {
   if (!input || typeof input !== 'object') throw invalidQuery({ body: 'object_required' });
+
   const metric = validateMetricName(input.metric);
   const period = periods.resolvePeriod(input.period, input);
   const dimensions = Array.isArray(input.dimensions) && input.dimensions.length ? input.dimensions : ['month'];
@@ -322,10 +340,72 @@ async function getInsight(tenantId, input = {}) {
     dimensions
   });
 
+  const insight = summarizeInsight(metric, current, previous);
+  const persisted = await insightRepo.upsertInsight({
+    tenantId,
+    type: insight.type,
+    metric: insight.metric,
+    periodStart: period.from,
+    periodEnd: period.to,
+    currentValue: insight.current,
+    previousValue: insight.previous,
+    variation: insight.variation,
+    baselineValue: insight.baseline,
+    title: insight.title,
+    explanation: insight.explanation,
+    methodology: insight.methodology,
+    evidenceCoverage: insight.evidence.coverage,
+    metadata: {
+      dimensions: insight.dimensions || dimensions,
+      evidence: insight.evidence
+    },
+    status: 'GENERATED'
+  });
+
+  await audit.record({
+    tenantId,
+    correlationId: input.correlationId || null,
+    action: 'ANALYTICS_INSIGHT_GENERATED',
+    result: 'ALLOWED',
+    metadata: {
+      insight_id: persisted.id,
+      metric: metric.name,
+      type: insight.type,
+      period_start: period.from.toISOString(),
+      period_end: period.to.toISOString()
+    }
+  });
+
   return {
     ok: true,
-    insight: summarizeInsight(metric, current, previous)
+    insight: {
+      ...insight,
+      id: persisted.id,
+      status: persisted.status,
+      created_at: persisted.created_at,
+      updated_at: persisted.updated_at
+    }
   };
+}
+
+async function listInsights(tenantId, input = {}) {
+  const metric = input.metric ? validateMetricName(input.metric).name : undefined;
+  return insightRepo.listInsights(tenantId, {
+    metric,
+    type: input.type,
+    limit: input.limit
+  });
+}
+
+async function getInsightById(tenantId, id) {
+  const parsed = Number(id);
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+    const error = new Error('ANALYTICS_INSIGHT_INVALID_ID');
+    error.code = 'ANALYTICS_INSIGHT_INVALID_ID';
+    error.status = 400;
+    throw error;
+  }
+  return insightRepo.getInsightById(tenantId, parsed);
 }
 
 module.exports = {
@@ -336,5 +416,7 @@ module.exports = {
   deleteMapping,
   getMetricStatus,
   getInsight,
-  summarizeInsight
+  summarizeInsight,
+  listInsights,
+  getInsightById
 };
