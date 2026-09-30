@@ -149,7 +149,7 @@ async function queryMetric(tenantId, input = {}) {
     value: mappings[metric.field]
   }, period, dimensions, isolation);
 
-  const rows = await require('../services/db.service').query(query.sql, query.params);
+  const rows = await db.query(query.sql, query.params);
   return formatResult(metric, period, dimensions, rows);
 }
 
@@ -206,77 +206,35 @@ function normalizeIdentifier(value, field) {
 }
 
 async function saveMapping(tenantId, input = {}, correlationId = null) {
-  const entityName = normalizeIdentifier(input.entity_name || input.entityName, 'entity_name');
-  const fieldName = normalizeIdentifier(input.field_name || input.fieldName, 'field_name');
-  const sourceName = normalizeIdentifier(input.source_name || input.sourceName, 'source_name');
-  const sourceField = normalizeIdentifier(input.source_field || input.sourceField, 'source_field');
-  const sourceType = String(input.source_type || input.sourceType || 'TABLE').trim().toUpperCase();
-  const dataType = String(input.data_type || input.dataType || 'TEXT').trim().toUpperCase();
-  const status = String(input.status || 'ACTIVE').trim().toUpperCase();
-  const isolationMode = String(input.isolation_mode || input.isolationMode || 'TENANT_COLUMN').trim().toUpperCase();
-  const tenantField = isolationMode === 'TENANT_COLUMN'
-    ? normalizeIdentifier(input.tenant_field || input.tenantField, 'tenant_field')
-    : null;
-  const tenantValue = isolationMode === 'TENANT_COLUMN'
-    ? (input.tenant_value ?? input.tenantValue)
-    : null;
+  const entityName=normalizeIdentifier(input.entity_name||input.entityName,'entity_name');
+  const fieldName=normalizeIdentifier(input.field_name||input.fieldName,'field_name');
+  const sourceName=normalizeIdentifier(input.source_name||input.sourceName,'source_name');
+  const sourceField=normalizeIdentifier(input.source_field||input.sourceField,'source_field');
+  const sourceType=String(input.source_type||input.sourceType||'TABLE').trim().toUpperCase();
+  const dataType=String(input.data_type||input.dataType||'TEXT').trim().toUpperCase();
+  const status=String(input.status||'ACTIVE').trim().toUpperCase();
+  const isolationMode=String(input.isolation_mode||input.isolationMode||'TENANT_COLUMN').trim().toUpperCase();
+  const tenantField=isolationMode==='TENANT_COLUMN'?normalizeIdentifier(input.tenant_field||input.tenantField,'tenant_field'):null;
+  const tenantValue=isolationMode==='TENANT_COLUMN'?(input.tenant_value??input.tenantValue):null;
 
-  if (sourceType !== 'TABLE') {
-    const error = new Error('ANALYTICS_UNSUPPORTED_SOURCE');
-    error.code = 'ANALYTICS_UNSUPPORTED_SOURCE';
-    error.status = 400;
-    throw error;
-  }
-
-  if (!['DEDICATED_SOURCE','TENANT_COLUMN'].includes(isolationMode)) { const error=new Error('ANALYTICS_TENANT_ISOLATION_NOT_CONFIGURED'); error.code=error.message; error.status=400; throw error; }
-  if (isolationMode === 'TENANT_COLUMN' && (tenantValue === null || tenantValue === undefined || String(tenantValue) === '')) { const error=new Error('ANALYTICS_TENANT_ISOLATION_NOT_CONFIGURED'); error.code=error.message; error.status=400; throw error; }
-
-  if (!['ACTIVE', 'DISABLED'].includes(status)) {
-    const error = new Error('ANALYTICS_INVALID_MAPPING_STATUS');
-    error.code = 'ANALYTICS_INVALID_MAPPING_STATUS';
-    error.status = 400;
-    throw error;
-  }
+  if(sourceType!=='TABLE'){const error=new Error('ANALYTICS_UNSUPPORTED_SOURCE');error.code=error.message;error.status=400;throw error;}
+  if(!['DEDICATED_SOURCE','TENANT_COLUMN'].includes(isolationMode)){const error=new Error('ANALYTICS_TENANT_ISOLATION_NOT_CONFIGURED');error.code=error.message;error.status=400;throw error;}
+  if(isolationMode==='TENANT_COLUMN'&&(tenantValue===null||tenantValue===undefined||String(tenantValue)==='')){const error=new Error('ANALYTICS_TENANT_ISOLATION_NOT_CONFIGURED');error.code=error.message;error.status=400;throw error;}
+  if(!['ACTIVE','DISABLED'].includes(status)){const error=new Error('ANALYTICS_INVALID_MAPPING_STATUS');error.code=error.message;error.status=400;throw error;}
 
   let mapping;
-  await db.withTransaction(async tx => {
-    const txMapping = await repo.upsertMapping({
-    tenantId,
-    entityName,
-    fieldName,
-    sourceType,
-    sourceName,
-    sourceField,
-    dataType,
-    status,
-    isolationMode,
-    tenantField,
-    tenantValue,
-    metadata: input.metadata
-  });
-  await db.withTransaction(async tx => {
-    const txMapping = await repo.upsertMapping({
-      tenantId,entityName,fieldName,sourceType,sourceName,sourceField,dataType,status,isolationMode,tenantField,tenantValue,metadata: input.metadata
-    }, tx);
-    await audit.recordTx(tx, {
-      tenantId,
-      correlationId,
-      action: 'ANALYTICS_MAPPING_UPSERTED',
-    result: 'ALLOWED',
-    metadata: {
-      entity_name: entityName,
-      field_name: fieldName,
-      source_type: sourceType,
-      source_name: sourceName,
-      source_field: sourceField,
-      isolation_mode: isolationMode
-    }
+  await db.withTransaction(async tx=>{
+    mapping=await repo.upsertMapping({
+      tenantId,entityName,fieldName,sourceType,sourceName,sourceField,dataType,status,
+      isolationMode,tenantField,tenantValue,metadata:input.metadata
+    },tx);
+    await audit.recordTx(tx,{
+      tenantId,correlationId,action:'ANALYTICS_MAPPING_UPSERTED',result:'ALLOWED',
+      metadata:{entity_name:entityName,field_name:fieldName,source_type:sourceType,source_name:sourceName,source_field:sourceField,isolation_mode:isolationMode}
     });
-    mapping = txMapping;
   });
   return mapping;
 }
-
 async function deleteMapping(tenantId, input = {}, correlationId = null) {
   const entityName = normalizeIdentifier(input.entity_name || input.entityName, 'entity_name');
   const fieldName = normalizeIdentifier(input.field_name || input.fieldName, 'field_name');
