@@ -215,6 +215,55 @@ Aprovação e conclusão de ações mutáveis exigem usuários configurados em `
 
 O scoring comercial agora possui política versionada e pode combinar ICP com sinais de intenção ponderados.
 
+
+### 6. Business Analytics
+
+Analytics V1 adds a deterministic business-metrics layer without turning the LLM into a SQL executor.
+
+Architecture:
+
+```
+ERP / API / DB
+      ↓
+Integration
+      ↓
+Tenant Semantic Mapping
+      ↓
+Controlled Metric Catalog
+      ↓
+Validated Query Builder
+      ↓
+Transactional SGBD
+      ↓
+Analytics Result
+      ↓
+Future: Insights → RAG/AI → Recommendation → Approval → Action
+```
+
+Current metrics:
+
+- `revenue`
+- `order_count`
+- `average_ticket`
+
+Current dimension:
+
+- `month`
+
+Current periods include `TODAY`, `THIS_MONTH`, `LAST_30_DAYS`, `LAST_90_DAYS` and `CUSTOM`.
+
+Endpoints:
+
+- `GET /analytics/metrics`
+- `POST /analytics/query`
+- `GET /analytics/mappings`
+- `POST /analytics/mappings`
+- `DELETE /analytics/mappings`
+
+Physical ERP names are resolved only from tenant-scoped mappings. Client requests and LLM output cannot provide executable SQL. Mapping changes are audited, and mapping administration requires `ANALYTICS_MAPPING_USERS`.
+
+Analytics is derived data; the configured transactional SGBD remains the source of truth. See `docs/analytics-v1.md` for the complete contract.
+
 ## API e segurança
 
 A API aplica, conforme o fluxo:
