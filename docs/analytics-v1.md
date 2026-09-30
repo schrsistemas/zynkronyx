@@ -171,3 +171,24 @@ Rules:
 - Missing evidence must be reported rather than replaced with invented causes.
 - RAG is complementary context; it cannot override deterministic metric values.
 - The explanation is an interpretation layer, not a causal inference engine.
+## Controlled Natural Language Analytics
+
+`POST /analytics/nl-query` accepts a business question and resolves it against the server-controlled metric catalog.
+
+Example:
+
+```json
+{"query":"Compare minha receita dos últimos 90 dias por mês"}
+```
+
+The V1 resolver is rule-based. It maps known Portuguese aliases to registered metrics and periods, then calls the same deterministic Analytics query service used by the UI.
+
+It does **not**:
+- generate SQL;
+- invent unsupported metrics;
+- execute arbitrary expressions;
+- infer unavailable business entities.
+
+Unknown metrics return `ANALYTICS_INTENT_METRIC_NOT_FOUND`.
+
+This is deliberately the first layer of Natural Language Analytics. A future AI intent resolver can propose an interpretation, but the final metric, period and physical query must still be validated against the semantic layer before execution.
