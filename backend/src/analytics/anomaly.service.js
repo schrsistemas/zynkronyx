@@ -10,3 +10,8 @@ function detectAnomaly(rows=[],options={}){
  return {status:'ANALYZED',anomaly:Math.abs(z)>=threshold,direction:z>0?'HIGH':z<0?'LOW':'NORMAL',period:current.period,value:current.value,baseline,deviation,z_score:Number(z.toFixed(4)),threshold,points:series.length};
 }
 module.exports={numericSeries,mean,stddev,detectAnomaly};
+
+const analytics=require('./analytics.service');
+
+async function analyzeMetric(tenantId,input={}){const metric=String(input.metric||'revenue');const period=String(input.period||'YTD');const result=await analytics.queryMetric(tenantId,{metric,period,dimensions:['month']});return {metric,period,analysis:detectAnomaly(result.data,input),data:result.data};}
+module.exports.analyzeMetric=analyzeMetric;
