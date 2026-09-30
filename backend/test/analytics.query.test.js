@@ -29,7 +29,8 @@ test('revenue query uses registered identifiers and parameters for values', () =
     },
     mappings,
     period,
-    ['month']
+    ['month'],
+    {mode:'DEDICATED_SOURCE'}
   );
 
   assert.match(result.sql, /SUM\("PEDIDO"\."VALOR_TOTAL"\)/);
@@ -55,7 +56,8 @@ test('average ticket uses deterministic derived calculation', () => {
       }
     },
     period,
-    ['month']
+    ['month'],
+    {mode:'DEDICATED_SOURCE'}
   );
 
   assert.match(result.sql, /SUM\("PEDIDO"\."VALOR_TOTAL"\)/);
