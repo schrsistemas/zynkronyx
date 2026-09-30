@@ -296,6 +296,8 @@ function summarizeInsight(metric, current, previous) {
       previous_period: previous.period,
       current_points: current.data.length,
       previous_points: previous.data.length,
+      current_series: current.data.slice(-120),
+      previous_series: previous.data.slice(-120),
       coverage
     },
     explanation: variation === null
