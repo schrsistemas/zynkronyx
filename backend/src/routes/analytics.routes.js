@@ -3,6 +3,7 @@ const analytics = require('../analytics/analytics.service');
 const insightExplanation = require('../analytics/insight.explanation.service');
 const nlAnalytics = require('../analytics/nl.analytics.service');
 const recommendations = require('../analytics/recommendation.service');
+const anomaly = require('../analytics/anomaly.service');
 
 const router = express.Router();
 
@@ -83,6 +84,12 @@ router.post('/nl-query', async (req, res) => {
   }
 });
 
+
+
+router.post('/anomalies', async (req,res)=>{
+  try{return res.json({ok:true,correlation_id:req.correlationId,...await anomaly.analyzeMetric(req.tenant.id,req.body||{})});}
+  catch(error){return res.status(error.status||500).json({ok:false,error:error.code||error.message||'ANALYTICS_ANOMALY_FAILED',correlation_id:req.correlationId,...(error.details?{details:error.details}:{})});}
+});
 
 router.post('/recommendations', async (req, res) => {
   try {
