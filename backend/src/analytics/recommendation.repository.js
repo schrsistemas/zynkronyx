@@ -1,4 +1,4 @@
-const db=require('../db/db.service');
+const db=require('../services/db.service');
 
 function row(r){if(!r)return null;return {id:Number(r.ID),tenant_id:Number(r.TENANT_ID),insight_id:Number(r.INSIGHT_ID),type:r.TYPE,action:r.ACTION,severity:r.SEVERITY,status:r.STATUS,rationale:r.RATIONALE,evidence_coverage:r.EVIDENCE_COVERAGE==null?null:Number(r.EVIDENCE_COVERAGE),requires_approval:r.REQUIRES_APPROVAL==='Y',approved_by:r.APPROVED_BY==null?null:Number(r.APPROVED_BY),approved_at:r.APPROVED_AT,created_at:r.CREATED_AT,updated_at:r.UPDATED_AT};}
 
