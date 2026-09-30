@@ -1,13 +1,11 @@
 {
-  "version": 2,
-  "purpose": "Business Analytics semantic mappings and deterministic insight persistence",
+  "version": 3,
+  "purpose": "Business Analytics semantic mappings, tenant isolation and deterministic insight persistence",
   "sourceOfTruth": "configured-transactional-sgbd",
-  "entities": [
-    "ANALYTICS_MAPPING",
-    "ANALYTICS_INSIGHT"
-  ],
+  "entities": ["ANALYTICS_MAPPING","ANALYTICS_INSIGHT"],
   "requirements": {
     "tenantIsolation": true,
+    "physicalTenantPredicate": true,
     "deterministicMetricDefinitions": true,
     "deterministicInsightClassification": true,
     "noClientSql": true,
@@ -16,11 +14,15 @@
   },
   "invariants": [
     "All mappings and insights are tenant scoped",
+    "Every active analytics mapping declares DEDICATED_SOURCE or TENANT_COLUMN isolation",
+    "TENANT_COLUMN mappings provide a validated physical tenant field and tenant value",
+    "Analytics queries never aggregate a shared source without an explicit tenant predicate",
     "Metric definitions remain server controlled",
     "Clients and LLMs never provide executable SQL",
     "Only registered semantic mappings resolve physical identifiers",
     "Unconfigured metrics are never represented as numeric zero",
     "Insights are derived from analytics results and are not transactional source of truth",
-    "Insight generation is idempotent for the same tenant, metric, classification and period"
+    "Insight generation is idempotent for the same tenant, metric, classification and period",
+    "Mapping mutation and its audit event are committed atomically"
   ]
 }
