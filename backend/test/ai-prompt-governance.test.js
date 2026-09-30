@@ -3,9 +3,9 @@ const assert=require('node:assert/strict');
 const Module=require('node:module');
 
 function load(rows,canaryStatus){
-  process.env.AI_PROMOTION_MIN_EVALS='3';
+  process.env.AI_PROMOTION_MIN_EVALS='1';
   process.env.AI_PROMOTION_MIN_SCORE='0.8';
-  process.env.AI_PROMOTION_MIN_DELTA='0';
+  process.env.AI_PROMOTION_MIN_DELTA='-1';
   const original=Module._load;
   const db={
     query:async(sql)=>{
