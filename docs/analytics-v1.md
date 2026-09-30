@@ -192,3 +192,9 @@ It does **not**:
 Unknown metrics return `ANALYTICS_INTENT_METRIC_NOT_FOUND`.
 
 This is deliberately the first layer of Natural Language Analytics. A future AI intent resolver can propose an interpretation, but the final metric, period and physical query must still be validated against the semantic layer before execution.
+
+## Recommendation Engine V1
+
+Insights can produce a tenant-scoped recommendation through `POST /analytics/recommendations` with `insight_id`. The engine is deterministic and maps insight classifications to structured actions such as `INVESTIGATE_DECLINE`, `ANALYZE_GROWTH_DRIVER`, `ESTABLISH_BASELINE` and `MONITOR_METRIC`.
+
+Recommendations are persisted, idempotent per insight, auditable and always created with `REQUIRES_APPROVAL=Y`. Approval and completion are separate lifecycle operations. This layer proposes work; it does not execute transactional changes.
