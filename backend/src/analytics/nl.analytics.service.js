@@ -104,11 +104,18 @@ async function resolveAndQuery(tenantId, query) {
   return { intent, result };
 }
 
+async function queryWithExplanation(tenantId, query, req) {
+  const resolved = await resolveAndQuery(tenantId, query);
+  return { intent: resolved.intent, result: resolved.result };
+}
+}
+
 module.exports = {
   normalize,
   detectMetric,
   detectPeriod,
   detectDimensions,
   parseIntent,
-  resolveAndQuery
+  resolveAndQuery,
+  queryWithExplanation
 };
