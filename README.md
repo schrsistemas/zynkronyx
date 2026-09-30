@@ -456,3 +456,8 @@ Próximas evoluções naturais incluem:
 - Persisted tenant-scoped insights with `POSITIVE_TREND`, `NEGATIVE_TREND`, `STABLE`, and `NEW_BASELINE` classifications.
 - API endpoints for generation and history retrieval.
 - No causal inference or statistical anomaly claims are made by this V1 heuristic layer.
+
+### Natural Language Analytics V1
+- Controlled Portuguese-language query resolver backed by the server metric catalog.
+- `POST /analytics/nl-query` maps business language to validated metrics and periods.
+- No arbitrary SQL generation; unsupported metrics are rejected.
