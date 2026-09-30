@@ -1,6 +1,7 @@
 const express = require('express');
 const analytics = require('../analytics/analytics.service');
 const insightExplanation = require('../analytics/insight.explanation.service');
+const nlAnalytics = require('../analytics/nl.analytics.service');
 
 const router = express.Router();
 
@@ -58,6 +59,23 @@ router.post('/query', async (req, res) => {
     return res.status(error.status || 500).json({
       ok: false,
       error: error.code || error.message,
+      correlation_id: req.correlationId,
+      ...(error.details ? { details: error.details } : {})
+    });
+  }
+});
+
+
+router.post('/nl-query', async (req, res) => {
+  try {
+    const query = String(req.body?.query || '').trim();
+    if (!query) return res.status(400).json({ ok: false, error: 'ANALYTICS_QUERY_REQUIRED', correlation_id: req.correlationId });
+    const result = await nlAnalytics.resolveAndQuery(req.tenant.id, query);
+    return res.json({ ok: true, correlation_id: req.correlationId, ...result });
+  } catch (error) {
+    return res.status(error.status || 500).json({
+      ok: false,
+      error: error.code || error.message || 'ANALYTICS_NL_QUERY_FAILED',
       correlation_id: req.correlationId,
       ...(error.details ? { details: error.details } : {})
     });
