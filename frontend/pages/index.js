@@ -156,6 +156,7 @@ export default function Home() {
           <Nav active={section==="security"} onClick={()=>setSection("security")} icon="⌑">Security</Nav>
           <Nav active={section==="ai"} onClick={()=>setSection("ai")} icon="✦">AI / RAG</Nav>
           <Nav active={section==="sales"} onClick={()=>setSection("sales")} icon="◫">AI Sales</Nav>
+          <Nav active={section==="analytics"} onClick={()=>setSection("analytics")} icon="▥">Analytics</Nav>
           <Nav active={section==="radar"} onClick={()=>setSection("radar")} icon="⌖">Radar</Nav>
           <Nav active={section==="devices"} onClick={()=>setSection("devices")} icon="⌁">Devices</Nav>
           <Nav active={section==="integrations"} onClick={()=>setSection("integrations")} icon="⚙">Integrations</Nav>
@@ -179,6 +180,7 @@ export default function Home() {
         {section === "security" && <Security authVersion={authVersion} onAuth={()=>setAuthVersion(v=>v+1)}/>}
         {section === "ai" && <AICenter authVersion={authVersion}/>}
         {section === "sales" && <SalesCenter authVersion={authVersion}/>}
+        {section === "analytics" && <AnalyticsCenter authVersion={authVersion}/>}
         {section === "radar" && <Radar/>}
         {section === "devices" && <Devices/>}
         {section === "integrations" && <IntegrationsCenter/>}
@@ -201,7 +203,7 @@ function Nav({active,onClick,icon,children}) {
     aria-current={active?"page":undefined}
   >{icon} <span>{children}</span></button>;
 }
-function title(s) { return ({overview:"System Overview",services:"Services",api:"API Explorer",database:"Database",sync:"Synchronization",devices:"Device Integrations",audit:"Legal Audit",deploy:"Deployments",docs:"Documentation",integrations:"Integrations & Simulator",monitoring:"Monitoring",radar:"Radar Visual",security:"Security",ai:"AI / RAG",sales:"AI Sales"})[s] || "Zynkronyx"; }
+function title(s) { return ({overview:"System Overview",services:"Services",api:"API Explorer",database:"Database",sync:"Synchronization",devices:"Device Integrations",audit:"Legal Audit",deploy:"Deployments",docs:"Documentation",integrations:"Integrations & Simulator",monitoring:"Monitoring",radar:"Radar Visual",security:"Security",ai:"AI / RAG",sales:"AI Sales",analytics:"Business Analytics"})[s] || "Zynkronyx"; }
 function authHeaders(){
   if(typeof window==="undefined") return {};
   const token=sessionStorage.getItem("zynkronyx_token");
@@ -251,6 +253,88 @@ function SyncConsole() {
 }
 
 function Monitoring({status,latency}) { return <div className="panel"><p className="lead">Diagnóstico operacional observado pelo navegador.</p><div className="row"><div><strong>Cloudflare Worker</strong><small>{status?.runtime || "cloudflare-workers"}</small></div><span className={"status " + (status?.ok ? "":"muted")}>{status?.ok ? "online":"offline"}</span></div><div className="row"><div><strong>API latency</strong><small>Última medição</small></div><span className="status">{latency ? latency+" ms":"—"}</span></div><div className="row"><div><strong>Cache policy</strong><small>API responses</small></div><span className="status">no-store</span></div></div>; }
+
+
+function AnalyticsCenter({authVersion}) {
+ const [metrics,setMetrics]=useState([]);
+ const [metric,setMetric]=useState("revenue");
+ const [period,setPeriod]=useState("LAST_90_DAYS");
+ const [rows,setRows]=useState([]);
+ const [mappings,setMappings]=useState([]);
+ const [loading,setLoading]=useState(false);
+ const [error,setError]=useState(null);
+ const auth=authHeaders();
+
+ async function loadCatalog() {
+  try {
+   const [mr,mr2]=await Promise.all([
+    fetch(API+"/analytics/metrics",{headers:auth,cache:"no-store"}),
+    fetch(API+"/analytics/mappings",{headers:auth,cache:"no-store"})
+   ]);
+   const mj=await mr.json(), mapj=await mr2.json();
+   if(!mr.ok) throw new Error(mj.error||"Falha no catálogo de métricas");
+   if(!mr2.ok) throw new Error(mapj.error||"Falha nos mappings");
+   setMetrics(mj.results||[]);
+   setMappings(mapj.results||[]);
+  } catch(e) { setError(e.message); }
+ }
+
+ async function query() {
+  setLoading(true); setError(null);
+  try {
+   const r=await fetch(API+"/analytics/query",{
+    method:"POST",
+    headers:{"Content-Type":"application/json",...auth},
+    body:JSON.stringify({metric,period,dimensions:["month"]})
+   });
+   const j=await r.json();
+   if(!r.ok) throw new Error(j.error||"Falha na consulta Analytics");
+   setRows(j.data||[]);
+  } catch(e) { setRows([]); setError(e.message); }
+  finally { setLoading(false); }
+ }
+
+ useEffect(()=>{loadCatalog()},[authVersion]);
+
+ const current=metrics.find(x=>x.name===metric);
+ const configured=current?.configured;
+
+ return <div>
+  <div className="hero">
+   <div><span className="pill">BUSINESS ANALYTICS</span><h2>Business Analytics</h2>
+   <p>Métricas determinísticas sobre o SGBD transacional, com mapping semântico por tenant.</p></div>
+   <div className="heroVersion">{metrics.filter(x=>x.configured).length}<br/><small>métricas configuradas</small></div>
+  </div>
+  {error&&<div className="panel resultBox">{error}</div>}
+  <div className="stats">
+   <Stat title="Métricas" value={metrics.length} note="catálogo controlado"/>
+   <Stat title="Configuradas" value={metrics.filter(x=>x.configured).length} note="tenant atual"/>
+   <Stat title="Mappings" value={mappings.length} note="semantic mappings"/>
+   <Stat title="Fonte" value="SGBD" note="source of truth"/>
+  </div>
+  <div className="panel">
+   <div className="sectionTitle"><h3>Consulta</h3><span>SQL não é exposto ao usuário</span></div>
+   <div className="securityForm">
+    <select value={metric} onChange={e=>setMetric(e.target.value)}>{metrics.map(m=><option key={m.name} value={m.name}>{m.label} · {m.name}</option>)}</select>
+    <select value={period} onChange={e=>setPeriod(e.target.value)}>
+     {["TODAY","YESTERDAY","THIS_MONTH","LAST_MONTH","LAST_30_DAYS","LAST_90_DAYS","YTD"].map(x=><option key={x}>{x}</option>)}
+    </select>
+    <button disabled={loading||configured===false} onClick={query}>{loading?"Consultando...":"Consultar"}</button>
+   </div>
+   {configured===false&&<div className="resultBox">Métrica ainda não configurada para este tenant. Configure os mappings antes de consultar.</div>}
+  </div>
+  <div className="panel">
+   <div className="sectionTitle"><h3>Resultado</h3><span>{rows.length} períodos</span></div>
+   {!rows.length?<div className="emptyState"><h2>Sem dados</h2><p>Execute uma consulta configurada. O painel não inventa valores.</p></div>:
+    rows.map((row,i)=><div className="row" key={row.period||i}><div><strong>{row.period}</strong><small>{metric}</small></div><span className="status">{Number(row.value).toLocaleString("pt-BR",{maximumFractionDigits:2})}</span></div>)}
+  </div>
+  <div className="panel">
+   <div className="sectionTitle"><h3>Semantic Mapping</h3><span>{mappings.length} registros</span></div>
+   {!mappings.length?<div className="emptyState"><p>Nenhum mapping retornado pela API.</p></div>:
+    mappings.map(m=><div className="row" key={m.ID||m.id}><div><strong>{m.ENTITY_NAME}.{m.FIELD_NAME}</strong><small>{m.SOURCE_NAME}.{m.SOURCE_FIELD}</small></div><span className="status">{m.STATUS}</span></div>)}
+  </div>
+ </div>;
+}
 
 function Devices() {
  const [rows,setRows]=useState([]); const [error,setError]=useState(null); const [loading,setLoading]=useState(false);
