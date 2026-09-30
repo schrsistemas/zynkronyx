@@ -2,6 +2,7 @@ const express = require('express');
 const analytics = require('../analytics/analytics.service');
 const insightExplanation = require('../analytics/insight.explanation.service');
 const nlAnalytics = require('../analytics/nl.analytics.service');
+const recommendations = require('../analytics/recommendation.service');
 
 const router = express.Router();
 
@@ -80,6 +81,32 @@ router.post('/nl-query', async (req, res) => {
       ...(error.details ? { details: error.details } : {})
     });
   }
+});
+
+
+router.post('/recommendations', async (req, res) => {
+  try {
+    const id = Number(req.body?.insight_id);
+    if (!Number.isSafeInteger(id) || id <= 0) return res.status(400).json({ok:false,error:'ANALYTICS_INSIGHT_INVALID_ID',correlation_id:req.correlationId});
+    return res.json({ok:true,correlation_id:req.correlationId,...await recommendations.propose(req,id)});
+  } catch(error) {
+    return res.status(error.status||500).json({ok:false,error:error.code||error.message||'ANALYTICS_RECOMMENDATION_FAILED',correlation_id:req.correlationId});
+  }
+});
+
+router.get('/recommendations', async (req,res)=>{
+  try{return res.json({ok:true,correlation_id:req.correlationId,results:await recommendations.list(req.tenant.id,req.query||{})});}
+  catch(error){return res.status(error.status||500).json({ok:false,error:error.code||error.message,correlation_id:req.correlationId});}
+});
+
+router.post('/recommendations/:id/approve', async (req,res)=>{
+  try{return res.json({ok:true,correlation_id:req.correlationId,recommendation:await recommendations.approve(req,Number(req.params.id))});}
+  catch(error){return res.status(error.status||500).json({ok:false,error:error.code||error.message,correlation_id:req.correlationId});}
+});
+
+router.post('/recommendations/:id/complete', async (req,res)=>{
+  try{return res.json({ok:true,correlation_id:req.correlationId,recommendation:await recommendations.complete(req,Number(req.params.id))});}
+  catch(error){return res.status(error.status||500).json({ok:false,error:error.code||error.message,correlation_id:req.correlationId});}
 });
 
 router.post('/insights', async (req, res) => {
