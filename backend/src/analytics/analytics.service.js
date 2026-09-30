@@ -114,10 +114,10 @@ async function queryMetric(tenantId, input = {}) {
     source: mappings[metric.requiredFields[0]],
     date: mappings.occurred_at,
     value: mappings[metric.field]
-  }, period, input.dimensions || []);
+  }, period, dimensions);
 
   const rows = await require('../services/db.service').query(query.sql, query.params);
-  return formatResult(metric, period, input.dimensions || [], rows);
+  return formatResult(metric, period, dimensions, rows);
 }
 
 function numeric(value) {
@@ -172,7 +172,7 @@ function normalizeIdentifier(value, field) {
   return text;
 }
 
-async function saveMapping(tenantId, input = {}) {
+async function saveMapping(tenantId, input = {}, correlationId = null) {
   const entityName = normalizeIdentifier(input.entity_name || input.entityName, 'entity_name');
   const fieldName = normalizeIdentifier(input.field_name || input.fieldName, 'field_name');
   const sourceName = normalizeIdentifier(input.source_name || input.sourceName, 'source_name');
@@ -208,6 +208,7 @@ async function saveMapping(tenantId, input = {}) {
   });
   await audit.record({
     tenantId,
+    correlationId,
     action: 'ANALYTICS_MAPPING_UPSERTED',
     result: 'ALLOWED',
     metadata: {
@@ -221,7 +222,7 @@ async function saveMapping(tenantId, input = {}) {
   return mapping;
 }
 
-async function deleteMapping(tenantId, input = {}) {
+async function deleteMapping(tenantId, input = {}, correlationId = null) {
   const entityName = normalizeIdentifier(input.entity_name || input.entityName, 'entity_name');
   const fieldName = normalizeIdentifier(input.field_name || input.fieldName, 'field_name');
   const existing = await repo.getMapping(tenantId, entityName, fieldName);
@@ -234,6 +235,7 @@ async function deleteMapping(tenantId, input = {}) {
   await repo.deleteMapping(tenantId, entityName, fieldName);
   await audit.record({
     tenantId,
+    correlationId,
     action: 'ANALYTICS_MAPPING_DELETED',
     result: 'ALLOWED',
     metadata: { entity_name: entityName, field_name: fieldName }
