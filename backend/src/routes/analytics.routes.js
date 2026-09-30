@@ -1,5 +1,6 @@
 const express = require('express');
 const analytics = require('../analytics/analytics.service');
+const insightExplanation = require('../analytics/insight.explanation.service');
 
 const router = express.Router();
 
@@ -114,6 +115,23 @@ router.get('/insights/:id', async (req, res) => {
       error: error.code || error.message,
       correlation_id: req.correlationId,
       ...(error.details ? { details: error.details } : {})
+    });
+  }
+});
+
+router.post('/insights/:id/explain', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isSafeInteger(id) || id <= 0) {
+      return res.status(400).json({ ok: false, error: 'ANALYTICS_INSIGHT_INVALID_ID', correlation_id: req.correlationId });
+    }
+    const result = await insightExplanation.explain(req.tenant.id, id, req);
+    return res.json({ ok: true, correlation_id: req.correlationId, ...result });
+  } catch (error) {
+    return res.status(error.status || 500).json({
+      ok: false,
+      error: error.code || error.message || 'ANALYTICS_INSIGHT_EXPLANATION_FAILED',
+      correlation_id: req.correlationId
     });
   }
 });
