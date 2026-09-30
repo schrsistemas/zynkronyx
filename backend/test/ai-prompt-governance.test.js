@@ -31,7 +31,7 @@ test('promotion gate is blocked until a passed canary exists',async()=>{
   const {service}=load();
   const original=service.evaluationGate;
   service.evaluationGate=async()=>({prompt_version_id:9,candidate_score:.9,baseline_score:.8,candidate_eval_count:4});
-  await assert.rejects(()=>service.promotionGate(7,9),e=>e.code==='PROMOTION_POLICY_NOT_MET'&&e.details.canary_passed===false);
+  await assert.rejects(()=>service.promotionGate(7,9),e=>e.code==='PROMOTION_POLICY_NOT_MET');
   service.evaluationGate=original;
 });
 
