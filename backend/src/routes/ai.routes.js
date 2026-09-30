@@ -22,6 +22,7 @@ router.get('/mcp/tools',(req,res)=>res.json({ok:true,correlation_id:req.correlat
 router.post('/mcp/call',async(req,res)=>{try{const result=await mcp.call(req,String(req.body?.name||''),req.body?.arguments||{});return res.json({ok:true,correlation_id:req.correlationId,result});}catch(error){return res.status(error.status||500).json({ok:false,error:error.code||error.message||'MCP_CALL_FAILED',correlation_id:req.correlationId});}});
 router.get('/skills',(req,res)=>res.json({ok:true,correlation_id:req.correlationId,results:skills.listSkills()}));
 router.get('/skills/:name',(req,res)=>{const skill=skills.getSkill(String(req.params.name));if(!skill)return res.status(404).json({ok:false,error:'SKILL_NOT_FOUND',correlation_id:req.correlationId});return res.json({ok:true,correlation_id:req.correlationId,skill});});
+router.post('/skills/:name/execute',async(req,res)=>{try{const result=await skillExecutor.execute(req,String(req.params.name),req.body||{});return res.json({ok:true,correlation_id:req.correlationId,...result});}catch(error){return res.status(error.status||500).json({ok:false,error:error.code||error.message||'SKILL_EXECUTION_FAILED',correlation_id:req.correlationId});}});
 
 router.get('/status', (req, res) => res.json({ ok: true, service: 'zynkronyx-ai', ...ai.status(req) }));
 
