@@ -1,24 +1,26 @@
 {
-  "version": 1,
-  "purpose": "Business analytics semantic mapping and deterministic metric query foundation",
+  "version": 2,
+  "purpose": "Business Analytics semantic mappings and deterministic insight persistence",
   "sourceOfTruth": "configured-transactional-sgbd",
   "entities": [
-    "ANALYTICS_MAPPING"
+    "ANALYTICS_MAPPING",
+    "ANALYTICS_INSIGHT"
   ],
   "requirements": {
     "tenantIsolation": true,
-    "deterministicMetrics": true,
-    "noRawSqlFromClients": true,
-    "sourceIdentifiersAreServerValidated": true,
-    "analyticsAreDerived": true,
-    "auditability": true
+    "deterministicMetricDefinitions": true,
+    "deterministicInsightClassification": true,
+    "noClientSql": true,
+    "auditability": true,
+    "derivedAnalytics": true
   },
   "invariants": [
-    "All analytics mappings are tenant scoped",
-    "Metric definitions are server controlled",
+    "All mappings and insights are tenant scoped",
+    "Metric definitions remain server controlled",
     "Clients and LLMs never provide executable SQL",
-    "Only registered semantic mappings may resolve physical source identifiers",
-    "An unconfigured metric is never represented as a numeric zero",
-    "Analytics data remains derived from the configured transactional source of truth"
+    "Only registered semantic mappings resolve physical identifiers",
+    "Unconfigured metrics are never represented as numeric zero",
+    "Insights are derived from analytics results and are not transactional source of truth",
+    "Insight generation is idempotent for the same tenant, metric, classification and period"
   ]
 }
