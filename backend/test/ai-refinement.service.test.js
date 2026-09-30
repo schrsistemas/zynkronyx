@@ -47,7 +47,7 @@ function loadService(){
     resolve:async()=>({ID:7,TENANT_ID:10,VERSION_NO:3,PROMPT_JSON:'{"tone":"direct"}'}),
     resolveTx:async()=>({ID:7,VERSION_NO:3,PROMPT_JSON:'{"tone":"direct"}'}),
     resolveByIdTx:async()=>({ID:7,TENANT_ID:10,VERSION_NO:3,PROMPT_JSON:'{"tone":"direct"}'}),
-    createTx:async(input)=>{state.prompt={...input,id:8};return 8;}
+    createTx:async(input)=>{state.prompt={...input,id:8};state.queries.push({sql:'INSERT INTO AI_PROMPT_VERSION',params:[8,input.tenantId,input.versionNo,input.name,JSON.stringify(input.prompt),input.status]});return 8;}
   };
 
   Module._load=function(request,parent,isMain){
