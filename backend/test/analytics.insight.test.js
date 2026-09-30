@@ -55,3 +55,23 @@ test('natural language resolver rejects unsupported business metric instead of i
     error => error.code === 'ANALYTICS_INTENT_METRIC_NOT_FOUND'
   );
 });
+
+const { classify } = require('../src/analytics/recommendation.service');
+
+test('recommendation classifies negative trend as risk without executing action', () => {
+  const result = classify({type:'NEGATIVE_TREND',variation:-0.15});
+  assert.equal(result.type,'RISK');
+  assert.equal(result.action,'INVESTIGATE_DECLINE');
+});
+
+test('recommendation classifies positive trend as opportunity', () => {
+  const result = classify({type:'POSITIVE_TREND',variation:0.2});
+  assert.equal(result.type,'OPPORTUNITY');
+  assert.equal(result.action,'ANALYZE_GROWTH_DRIVER');
+});
+
+test('recommendation keeps stable metrics in monitoring state', () => {
+  const result = classify({type:'STABLE',variation:0.02});
+  assert.equal(result.type,'REVIEW');
+  assert.equal(result.action,'MONITOR_METRIC');
+});
