@@ -262,6 +262,7 @@ function AnalyticsCenter({authVersion}) {
  const [rows,setRows]=useState([]);
  const [mappings,setMappings]=useState([]);
  const [insight,setInsight]=useState(null);
+ const [insights,setInsights]=useState([]);
  const [loading,setLoading]=useState(false);
  const [error,setError]=useState(null);
  const auth=authHeaders();
@@ -280,12 +281,21 @@ function AnalyticsCenter({authVersion}) {
   } catch(e) { setError(e.message); }
  }
 
+ async function loadInsights() {
+  try {
+   const r=await fetch(API+"/analytics/insights?metric="+encodeURIComponent(metric)+"&limit=10",{headers:auth,cache:"no-store"});
+   const j=await r.json(); if(!r.ok) throw new Error(j.error||"Falha ao carregar histórico de insights");
+   setInsights(j.results||[]);
+  } catch(e) { setError(e.message); }
+ }
+
  async function runInsight() {
   setLoading(true); setError(null); setInsight(null);
   try {
    const r=await fetch(API+"/analytics/insights",{method:"POST",headers:{"Content-Type":"application/json",...auth},body:JSON.stringify({metric,period,dimensions:["month"]})});
    const j=await r.json(); if(!r.ok) throw new Error(j.error||"Falha ao calcular insight");
    setInsight(j.insight||null);
+   await loadInsights();
   } catch(e) { setError(e.message); } finally { setLoading(false); }
  }
 
@@ -304,7 +314,7 @@ function AnalyticsCenter({authVersion}) {
   finally { setLoading(false); }
  }
 
- useEffect(()=>{loadCatalog()},[authVersion]);
+ useEffect(()=>{loadCatalog();loadInsights()},[authVersion]);
 
  const current=metrics.find(x=>x.name===metric);
  const configured=current?.configured;
@@ -349,6 +359,14 @@ function AnalyticsCenter({authVersion}) {
    </div>
    <div className="resultBox"><strong>{insight.explanation}</strong><br/><small>Threshold: ±10%. Evidência: {insight.evidence.current_points} pontos atuais / {insight.evidence.previous_points} anteriores.</small></div>
   </div>}
+  <div className="panel">
+   <div className="sectionTitle"><h3>Histórico de insights</h3><span>{insights.length} registros</span></div>
+   {!insights.length?<div className="emptyState"><p>Nenhum insight persistido para esta métrica.</p></div>:
+    insights.map((item,i)=><div className="row" key={item.id||i}>
+     <div><strong>{item.title||item.type}</strong><small>{item.period_start?String(item.period_start).slice(0,10):"—"} · {item.metric}</small></div>
+     <span className="status">{item.variation===null?"—":(Number(item.variation)*100).toFixed(2)+"%"}</span>
+    </div>)}
+  </div>
   <div className="panel">
    <div className="sectionTitle"><h3>Semantic Mapping</h3><span>{mappings.length} registros</span></div>
    {!mappings.length?<div className="emptyState"><p>Nenhum mapping retornado pela API.</p></div>:
