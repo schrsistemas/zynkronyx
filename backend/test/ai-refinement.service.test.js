@@ -95,8 +95,10 @@ test('accept preserves base prompt lineage and creates draft in the same transac
   assert.equal(result.draft_prompt_id,8);
   assert.equal(result.base_prompt_id,7);
   assert.equal(result.next_version,4);
-  assert.equal(state.prompt.status,'DRAFT');
-  assert.deepEqual(state.prompt.prompt,{tone:'concise'});
+  const promptInsert=state.queries.find(x=>x.sql.startsWith('INSERT INTO AI_PROMPT_VERSION'));
+  assert.ok(promptInsert);
+  assert.equal(promptInsert.params[5],'DRAFT');
+  assert.deepEqual(JSON.parse(promptInsert.params[4]),{tone:'concise'});
   assert.equal(result.refinement.STATUS,'ACCEPTED');
   assert.equal(result.refinement.BASE_PROMPT_VERSION_ID,7);
   assert.equal(result.refinement.PROMPT_VERSION_ID,8);
