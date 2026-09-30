@@ -198,3 +198,9 @@ This is deliberately the first layer of Natural Language Analytics. A future AI 
 Insights can produce a tenant-scoped recommendation through `POST /analytics/recommendations` with `insight_id`. The engine is deterministic and maps insight classifications to structured actions such as `INVESTIGATE_DECLINE`, `ANALYZE_GROWTH_DRIVER`, `ESTABLISH_BASELINE` and `MONITOR_METRIC`.
 
 Recommendations are persisted, idempotent per insight, auditable and always created with `REQUIRES_APPROVAL=Y`. Approval and completion are separate lifecycle operations. This layer proposes work; it does not execute transactional changes.
+
+## Anomaly Detection V1
+
+`POST /analytics/anomalies` applies a statistical baseline to a metric time series. V1 requires at least six points, computes the historical mean and sample standard deviation, and evaluates the latest point using a configurable z-score threshold (default `2.5`).
+
+An insufficient history or zero historical variance is reported explicitly; neither is converted into a false anomaly. This is distinct from the deterministic `POSITIVE_TREND`/`NEGATIVE_TREND` classifications in Insight Engine V1.
