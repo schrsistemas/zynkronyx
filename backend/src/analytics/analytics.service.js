@@ -335,5 +335,6 @@ module.exports = {
   saveMapping,
   deleteMapping,
   getMetricStatus,
-  getInsight
+  getInsight,
+  summarizeInsight
 };
