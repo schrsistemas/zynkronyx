@@ -26,3 +26,14 @@ test('zero baseline is never converted into a fake percentage', () => {
   assert.equal(result.type,'NEW_BASELINE');
   assert.equal(result.variation_percent,null);
 });
+
+test('insight evidence preserves deterministic current and previous series', () => {
+  const result = summarizeInsight(
+    metric,
+    {data:[{period:'2026-09',value:120},{period:'2026-10',value:130}],period:{name:'THIS_MONTH'}},
+    {data:[{period:'2026-08',value:100}],period:{name:'LAST_MONTH'}}
+  );
+  assert.deepEqual(result.evidence.current_series,[{period:'2026-09',value:120},{period:'2026-10',value:130}]);
+  assert.deepEqual(result.evidence.previous_series,[{period:'2026-08',value:100}]);
+  assert.equal(result.methodology.kind,'DETERMINISTIC');
+});
