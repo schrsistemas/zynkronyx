@@ -37,3 +37,21 @@ test('insight evidence preserves deterministic current and previous series', () 
   assert.deepEqual(result.evidence.previous_series,[{period:'2026-08',value:100}]);
   assert.equal(result.methodology.kind,'DETERMINISTIC');
 });
+
+const { parseIntent } = require('../src/analytics/nl.analytics.service');
+
+test('natural language resolver maps Portuguese revenue query to controlled metric', () => {
+  const intent = parseIntent('Compare minha receita dos últimos 90 dias por mês');
+  assert.equal(intent.operation,'QUERY_METRIC');
+  assert.equal(intent.metric,'revenue');
+  assert.equal(intent.period,'LAST_90_DAYS');
+  assert.deepEqual(intent.dimensions,['month']);
+  assert.equal(intent.confidence.kind,'RULE_BASED');
+});
+
+test('natural language resolver rejects unsupported business metric instead of inventing SQL', () => {
+  assert.throws(
+    () => parseIntent('Qual foi meu churn nos últimos 90 dias?'),
+    error => error.code === 'ANALYTICS_INTENT_METRIC_NOT_FOUND'
+  );
+});
