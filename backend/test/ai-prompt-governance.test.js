@@ -5,12 +5,14 @@ const Module=require('node:module');
 function load(rows,canaryStatus){
   const original=Module._load;
   const db={
-    query:async(sql)=>sql.includes('AI_PROMPT_RELEASE')?(canaryStatus?[{ID:41,STATUS:canaryStatus}]:[]):sql.includes('AI_PROMPT_VERSION')?[{ID:9,TENANT_ID:7,VERSION_NO:4,STATUS:'DRAFT'}]:sql.includes('AI_EVAL_RUN')?[{SCORE:.9,PROMPT_VERSION_ID:9},{SCORE:.9,PROMPT_VERSION_ID:9},{SCORE:.9,PROMPT_VERSION_ID:9},{SCORE:.8,PROMPT_VERSION_ID:8}]:[],
+    query:async(sql)=>{
+      if(sql.includes('AI_PROMPT_RELEASE'))return canaryStatus?[{ID:41,STATUS:canaryStatus}]:[];
+      if(sql.includes('AI_EVAL_RUN'))return [{SCORE:.9,PROMPT_VERSION_ID:9},{SCORE:.9,PROMPT_VERSION_ID:9},{SCORE:.9,PROMPT_VERSION_ID:9},{SCORE:.8,PROMPT_VERSION_ID:8}];
+      if(sql.includes('AI_PROMPT_VERSION')&&sql.includes("STATUS='ACTIVE'"))return [{ID:8,TENANT_ID:7,VERSION_NO:3,STATUS:'ACTIVE'}];
+      if(sql.includes('AI_PROMPT_VERSION')&&sql.includes('WHERE ID=?'))return [{ID:9,TENANT_ID:7,VERSION_NO:4,STATUS:'DRAFT'}];
+      return [];
+    },
     dialect:()=>({currentTimestamp:'CURRENT_TIMESTAMP'})
-  };
-  const prompts={
-    getById:async()=>({ID:9,TENANT_ID:7,VERSION_NO:4}),
-    resolve:async()=>({ID:8}),
   };
   Module._load=function(request,parent,isMain){
     if(request==='./db.service'&&parent?.filename?.endsWith('ai.prompt.service.js'))return db;
@@ -41,7 +43,6 @@ test('promotion gate accepts a passed canary',async()=>{
 test('evaluation gate can pass independently of canary status',async()=>{
   const {service}=load();
   service.getById=async()=>({ID:9,TENANT_ID:7,VERSION_NO:4,STATUS:'DRAFT'});
-  service.resolve=async()=>({ID:8});
   const gate=await service.evaluationGate(7,9);
   assert.equal(gate.prompt_version_id,9);
   assert.equal(gate.candidate_score,.9);
@@ -54,18 +55,16 @@ test('production rollback records lineage and changes active prompt atomically',
   const calls=[];
   const db={
     query:async(sql,params)=>{
-      if(sql.includes("STATUS='ACTIVE'")) return [{ID:9,VERSION_NO:4}];
-      if(sql.includes('WHERE ID=? AND TENANT_ID=?')) return [{ID:8,VERSION_NO:3,STATUS:'RETIRED'}];
+      if(sql.includes("STATUS='ACTIVE'"))return [{ID:9,VERSION_NO:4}];
+      if(sql.includes('WHERE ID=? AND TENANT_ID=?'))return [{ID:8,VERSION_NO:3,STATUS:'RETIRED'}];
+      if(sql.includes('WHERE ID=? AND (TENANT_ID=? OR TENANT_ID IS NULL)'))return [{ID:8,TENANT_ID:7,VERSION_NO:3,STATUS:'RETIRED'}];
       return [];
     },
-    withTransaction:async(work)=>{
-      const tx={
-        query:db.query,
-        execute:async(sql,params)=>calls.push({sql,params}),
-        nextId:async()=>77
-      };
-      return work(tx);
-    },
+    withTransaction:async work=>work({
+      query:db.query,
+      execute:async(sql,params)=>calls.push({sql,params}),
+      nextId:async()=>77
+    }),
     dialect:()=>({currentTimestamp:'CURRENT_TIMESTAMP'})
   };
   Module._load=function(request,parent,isMain){
