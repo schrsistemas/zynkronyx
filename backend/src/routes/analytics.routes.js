@@ -4,6 +4,7 @@ const insightExplanation = require('../analytics/insight.explanation.service');
 const nlAnalytics = require('../analytics/nl.analytics.service');
 const recommendations = require('../analytics/recommendation.service');
 const anomaly = require('../analytics/anomaly.service');
+const forecast = require('../analytics/forecast.service');
 
 const router = express.Router();
 
