@@ -28,6 +28,7 @@ function loadService(){
     withTransaction:async work=>work({
       nextId:async()=>++state.nextId,
       query:async(sql,params)=>{
+        state.queries.push({sql,params});
         if(sql.includes('FROM AI_REFINEMENT_ITEM')&&sql.includes('WHERE ID=? AND TENANT_ID=?')){const item=findItem(params[0],params[1]);return item?[{...item}]:[];}
         if(sql.includes('ACCEPT_IDEMPOTENCY_KEY'))return [];
         return [];
