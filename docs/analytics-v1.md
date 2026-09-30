@@ -158,3 +158,16 @@ Stored fields include current/previous values, variation, baseline, explanation,
 `POST /analytics/insights`
 
 The transactional SGBD remains the source of truth. Insights can be discarded and regenerated from Analytics results.
+
+## Evidence and AI explanation
+
+Each generated insight keeps a bounded deterministic evidence series for the current and comparison periods.
+
+`POST /analytics/insights/:id/explain` optionally sends the verified insight facts to the governed AI service for natural-language explanation.
+
+Rules:
+- Numeric Analytics values remain authoritative.
+- AI does not calculate or mutate transactional data.
+- Missing evidence must be reported rather than replaced with invented causes.
+- RAG is complementary context; it cannot override deterministic metric values.
+- The explanation is an interpretation layer, not a causal inference engine.
