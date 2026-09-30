@@ -130,7 +130,46 @@ A recuperação possui fallback lexical quando a camada vetorial não está disp
 
 O contexto recuperado é tratado como **dados não confiáveis**, e não como instruções executáveis.
 
-### 4. Governança de IA
+### 4. MCP, Skills e LLM Governance
+
+A plataforma separa quatro responsabilidades:
+
+```
+LLM
+ │
+ ▼
+Intent / Skill
+ │
+ ▼
+MCP Tool Registry
+ │
+ ├── Analytics
+ ├── RAG
+ └── futuros domínios
+ │
+ ▼
+Application Services
+ │
+ ▼
+SGBD / APIs
+```
+
+**MCP** é tratado como uma camada de ferramentas governadas, não como uma autorização implícita. Cada tool possui schema, tenant context e permissões explícitas.
+
+**Skills** são capacidades versionadas com políticas próprias. Uma Skill não ganha permissão para executar operações que o usuário não possui.
+
+**LLM** interpreta, resume, explica e resolve linguagem natural. Ele não recebe acesso arbitrário ao banco e não gera SQL executável.
+
+**Fine-tuning** não é utilizado como substituto de RAG. A base inicial de fine-tuning é construída somente a partir de exemplos validados/deduplicados, com proveniência e tenant quando aplicável. Conhecimento mutável continua no RAG/transactional source.
+
+Endpoints iniciais:
+
+- `GET /ai/mcp/tools`
+- `POST /ai/mcp/call`
+- `GET /ai/skills`
+- `GET /ai/skills/:name`
+
+### 5. Governança de IA
 
 A plataforma possui ciclo de refinamento:
 
@@ -166,7 +205,7 @@ Rotas:
 
 Operações de governança possuem autorização específica e falham fechadas quando não configuradas.
 
-### 5. Aceleração Comercial com IA
+### 6. Aceleração Comercial com IA
 
 O domínio comercial foi criado como uma camada própria, sem transformar o LLM em operador direto do CRM.
 
@@ -216,7 +255,7 @@ Aprovação e conclusão de ações mutáveis exigem usuários configurados em `
 O scoring comercial agora possui política versionada e pode combinar ICP com sinais de intenção ponderados.
 
 
-### 6. Business Analytics
+### 7. Business Analytics
 
 Analytics V1 adds a deterministic business-metrics layer without turning the LLM into a SQL executor.
 
