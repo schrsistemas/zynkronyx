@@ -263,6 +263,7 @@ function AnalyticsCenter({authVersion}) {
  const [mappings,setMappings]=useState([]);
  const [insight,setInsight]=useState(null);
  const [insights,setInsights]=useState([]);
+ const [aiExplanation,setAiExplanation]=useState(null);
  const [loading,setLoading]=useState(false);
  const [error,setError]=useState(null);
  const auth=authHeaders();
@@ -287,6 +288,15 @@ function AnalyticsCenter({authVersion}) {
    const j=await r.json(); if(!r.ok) throw new Error(j.error||"Falha ao carregar histórico de insights");
    setInsights(j.results||[]);
   } catch(e) { setError(e.message); }
+ }
+
+ async function explainInsight(id) {
+  setLoading(true); setError(null); setAiExplanation(null);
+  try {
+   const r=await fetch(API+"/analytics/insights/"+encodeURIComponent(id)+"/explain",{method:"POST",headers:auth});
+   const j=await r.json(); if(!r.ok) throw new Error(j.error||"Falha ao gerar explicação por IA");
+   setAiExplanation(j);
+  } catch(e) { setError(e.message); } finally { setLoading(false); }
  }
 
  async function runInsight() {
@@ -364,9 +374,14 @@ function AnalyticsCenter({authVersion}) {
    {!insights.length?<div className="emptyState"><p>Nenhum insight persistido para esta métrica.</p></div>:
     insights.map((item,i)=><div className="row" key={item.id||i}>
      <div><strong>{item.title||item.type}</strong><small>{item.period_start?String(item.period_start).slice(0,10):"—"} · {item.metric}</small></div>
-     <span className="status">{item.variation===null?"—":(Number(item.variation)*100).toFixed(2)+"%"}</span>
+     <span className="status">{item.variation===null?"—":(Number(item.variation)*100).toFixed(2)+"%"} <button onClick={()=>explainInsight(item.id)} disabled={loading}>IA</button></span>
     </div>)}
   </div>
+  {aiExplanation&&<div className="panel">
+   <div className="sectionTitle"><h3>Explicação por IA</h3><span>somente interpretação</span></div>
+   <div className="resultBox"><strong>Os valores permanecem determinísticos.</strong><br/>{typeof aiExplanation.explanation==="string"?aiExplanation.explanation:JSON.stringify(aiExplanation.explanation)}</div>
+   <small>Fontes RAG: {(aiExplanation.sources||[]).length} · Prompt: {aiExplanation.prompt_version||"não informado"}</small>
+  </div>}
   <div className="panel">
    <div className="sectionTitle"><h3>Semantic Mapping</h3><span>{mappings.length} registros</span></div>
    {!mappings.length?<div className="emptyState"><p>Nenhum mapping retornado pela API.</p></div>:
