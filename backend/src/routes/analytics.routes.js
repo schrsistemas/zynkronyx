@@ -63,6 +63,23 @@ router.post('/query', async (req, res) => {
   }
 });
 
+router.post('/insights', async (req, res) => {
+  try {
+    return res.json({
+      ok: true,
+      correlation_id: req.correlationId,
+      ...await analytics.getInsight(req.tenant.id, req.body || {})
+    });
+  } catch (error) {
+    return res.status(error.status || 500).json({
+      ok: false,
+      error: error.code || error.message,
+      correlation_id: req.correlationId,
+      ...(error.details ? { details: error.details } : {})
+    });
+  }
+});
+
 router.get('/mappings', async (req, res) => {
   try {
     return res.json({
