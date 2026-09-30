@@ -84,7 +84,7 @@ router.post('/mappings', requireMappingAdmin, async (req, res) => {
     return res.status(201).json({
       ok: true,
       correlation_id: req.correlationId,
-      mapping: await analytics.saveMapping(req.tenant.id, req.body || {})
+      mapping: await analytics.saveMapping(req.tenant.id, req.body || {}, req.correlationId)
     });
   } catch (error) {
     return res.status(error.status || 500).json({
@@ -98,7 +98,7 @@ router.post('/mappings', requireMappingAdmin, async (req, res) => {
 
 router.delete('/mappings', requireMappingAdmin, async (req, res) => {
   try {
-    await analytics.deleteMapping(req.tenant.id, req.body || req.query || {});
+    await analytics.deleteMapping(req.tenant.id, req.body || req.query || {}, req.correlationId);
     return res.status(204).send();
   } catch (error) {
     return res.status(error.status || 500).json({
