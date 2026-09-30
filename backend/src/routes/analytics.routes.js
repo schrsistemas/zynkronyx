@@ -68,8 +68,46 @@ router.post('/insights', async (req, res) => {
     return res.json({
       ok: true,
       correlation_id: req.correlationId,
-      ...await analytics.getInsight(req.tenant.id, req.body || {})
+      ...await analytics.getInsight(req.tenant.id, req.body || {}, req.correlationId)
     });
+  } catch (error) {
+    return res.status(error.status || 500).json({
+      ok: false,
+      error: error.code || error.message,
+      correlation_id: req.correlationId,
+      ...(error.details ? { details: error.details } : {})
+    });
+  }
+});
+
+router.get('/insights', async (req, res) => {
+  try {
+    return res.json({
+      ok: true,
+      correlation_id: req.correlationId,
+      results: await analytics.listInsights(req.tenant.id, req.query || {})
+    });
+  } catch (error) {
+    return res.status(error.status || 500).json({
+      ok: false,
+      error: error.code || error.message,
+      correlation_id: req.correlationId,
+      ...(error.details ? { details: error.details } : {})
+    });
+  }
+});
+
+router.get('/insights/:id', async (req, res) => {
+  try {
+    const insight = await analytics.getInsightById(req.tenant.id, req.params.id);
+    if (!insight) {
+      return res.status(404).json({
+        ok: false,
+        error: 'ANALYTICS_INSIGHT_NOT_FOUND',
+        correlation_id: req.correlationId
+      });
+    }
+    return res.json({ ok: true, correlation_id: req.correlationId, insight });
   } catch (error) {
     return res.status(error.status || 500).json({
       ok: false,
