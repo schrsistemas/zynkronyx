@@ -72,10 +72,6 @@ function buildQuery(metric, mappings, period, dimensions = []) {
     throw error;
   }
 
-  if (!normalized.length) {
-    return buildBaseQuery(metric, mappings, period);
-  }
-
   if (metric.type === 'DERIVED' && metric.name === 'average_ticket') {
     return buildAverageTicketQuery(mappings, period);
   }
