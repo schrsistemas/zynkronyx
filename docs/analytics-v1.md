@@ -125,3 +125,36 @@ DATA -> METRIC -> INSIGHT -> RAG/CONTEXT -> AI -> RECOMMENDATION -> APPROVAL -> 
 ```
 
 LLM integration must consume validated Analytics results rather than generating arbitrary executable SQL.
+
+## Insight Engine V1
+
+The Insight Engine consumes validated Analytics results; it does not issue SQL independently.
+
+### Deterministic comparison
+
+`POST /analytics/insights` compares the requested period with the immediately previous equivalent period.
+
+Classification:
+
+- `POSITIVE_TREND`: variation >= +10%.
+- `NEGATIVE_TREND`: variation <= -10%.
+- `STABLE`: variation between -10% and +10%.
+- `NEW_BASELINE`: previous period is zero while the current period is non-zero; percentage variation is `null`.
+
+The 10% threshold is a heuristic for descriptive product behavior. It is not a statistical anomaly detector and does not imply causality.
+
+### Persistence
+
+Generated insights are stored tenant-scoped in `ANALYTICS_INSIGHT`. Generation is keyed by tenant, metric, classification and exact period, allowing repeated requests to refresh the same derived insight.
+
+Stored fields include current/previous values, variation, baseline, explanation, methodology and evidence coverage.
+
+### API
+
+`GET /analytics/insights?metric=revenue&type=NEGATIVE_TREND&limit=25`
+
+`GET /analytics/insights/:id`
+
+`POST /analytics/insights`
+
+The transactional SGBD remains the source of truth. Insights can be discarded and regenerated from Analytics results.
