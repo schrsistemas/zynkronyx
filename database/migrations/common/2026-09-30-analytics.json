@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "purpose": "Business analytics semantic mapping and deterministic metric query foundation",
+  "sourceOfTruth": "configured-transactional-sgbd",
+  "entities": [
+    "ANALYTICS_MAPPING"
+  ],
+  "requirements": {
+    "tenantIsolation": true,
+    "deterministicMetrics": true,
+    "noRawSqlFromClients": true,
+    "sourceIdentifiersAreServerValidated": true,
+    "analyticsAreDerived": true,
+    "auditability": true
+  },
+  "invariants": [
+    "All analytics mappings are tenant scoped",
+    "Metric definitions are server controlled",
+    "Clients and LLMs never provide executable SQL",
+    "Only registered semantic mappings may resolve physical source identifiers",
+    "An unconfigured metric is never represented as a numeric zero",
+    "Analytics data remains derived from the configured transactional source of truth"
+  ]
+}
