@@ -314,7 +314,7 @@ function summarizeInsight(metric, current, previous) {
   };
 }
 
-async function getInsight(tenantId, input = {}) {
+async function getInsight(tenantId, input = {}, correlationId = null) {
   if (!input || typeof input !== 'object') throw invalidQuery({ body: 'object_required' });
 
   const metric = validateMetricName(input.metric);
@@ -364,7 +364,7 @@ async function getInsight(tenantId, input = {}) {
 
   await audit.record({
     tenantId,
-    correlationId: input.correlationId || null,
+    correlationId,
     action: 'ANALYTICS_INSIGHT_GENERATED',
     result: 'ALLOWED',
     metadata: {
