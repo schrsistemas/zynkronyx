@@ -41,8 +41,8 @@ async function call(req,name,args={}){
  if(!TOOLS[name]){const e=new Error('MCP_TOOL_NOT_FOUND');e.code=e.message;e.status=404;throw e;}
  const contract=contracts.getContract(name);
  if(contract.tenantRequired&&!req?.tenant?.id){const e=new Error('TENANT_CONTEXT_REQUIRED');e.code=e.message;e.status=401;throw e;}
- if(contract.auditRequired&&!req?.correlationId){const e=new Error('MCP_CORRELATION_ID_REQUIRED');e.code=e.message;e.status=400;throw e;}
  assertPermission(req,name);
+ if(contract.auditRequired&&!req?.correlationId){const e=new Error('MCP_CORRELATION_ID_REQUIRED');e.code=e.message;e.status=400;throw e;}
  contracts.validateArgs(name,args);
  const tenantId=req.tenant.id;
  if(name==='analytics_query')return analytics.queryMetric(tenantId,args);
