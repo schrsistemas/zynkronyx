@@ -314,7 +314,7 @@ function AnalyticsCenter({authVersion}) {
   finally { setLoading(false); }
  }
 
- useEffect(()=>{loadCatalog();loadInsights()},[authVersion]);
+ useEffect(()=>{loadCatalog();loadInsights()},[authVersion,metric]);
 
  const current=metrics.find(x=>x.name===metric);
  const configured=current?.configured;
