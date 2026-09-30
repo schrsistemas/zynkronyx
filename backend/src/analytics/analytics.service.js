@@ -243,11 +243,97 @@ async function deleteMapping(tenantId, input = {}, correlationId = null) {
   return existing;
 }
 
+
+function shiftPeriod(period, now = new Date()) {
+  const from = new Date(period.from);
+  const to = new Date(period.to);
+  const duration = to.getTime() - from.getTime() + 1;
+  return {
+    name: 'PREVIOUS_PERIOD',
+    from: new Date(from.getTime() - duration),
+    to: new Date(from.getTime() - 1)
+  };
+}
+
+function summarizeInsight(metric, current, previous) {
+  const currentTotal = current.data.reduce((sum, row) => sum + Number(row.value || 0), 0);
+  const previousTotal = previous.data.reduce((sum, row) => sum + Number(row.value || 0), 0);
+  const variation = previousTotal === 0
+    ? (currentTotal === 0 ? 0 : null)
+    : ((currentTotal - previousTotal) / Math.abs(previousTotal));
+
+  let type = 'STABLE';
+  if (variation === null) type = 'NEW_BASELINE';
+  else if (variation >= 0.10) type = 'POSITIVE_TREND';
+  else if (variation <= -0.10) type = 'NEGATIVE_TREND';
+  else type = 'STABLE';
+
+  return {
+    type,
+    metric: metric.name,
+    label: metric.label,
+    current: currentTotal,
+    previous: previousTotal,
+    variation,
+    variation_percent: variation === null ? null : Number((variation * 100).toFixed(2)),
+    evidence: {
+      current_period: current.period,
+      previous_period: previous.period,
+      current_points: current.data.length,
+      previous_points: previous.data.length
+    },
+    explanation: variation === null
+      ? (currentTotal === 0 ? 'Não houve valor no período atual nem no período anterior.' : 'O período anterior não possui base numérica; a variação percentual não é calculada.')
+      : type === 'POSITIVE_TREND'
+        ? 'A métrica aumentou pelo menos 10% em relação ao período imediatamente anterior.'
+        : type === 'NEGATIVE_TREND'
+          ? 'A métrica reduziu pelo menos 10% em relação ao período imediatamente anterior.'
+          : 'A variação ficou entre -10% e +10%; o resultado é classificado como estável.',
+    methodology: {
+      kind: 'DETERMINISTIC',
+      threshold: 0.10,
+      source: 'ANALYTICS_QUERY'
+    }
+  };
+}
+
+async function getInsight(tenantId, input = {}) {
+  if (!input || typeof input !== 'object') throw invalidQuery({ body: 'object_required' });
+  const metric = validateMetricName(input.metric);
+  const period = periods.resolvePeriod(input.period, input);
+  const dimensions = Array.isArray(input.dimensions) && input.dimensions.length ? input.dimensions : ['month'];
+
+  const current = await queryMetric(tenantId, {
+    metric: metric.name,
+    period: period.name,
+    dimensions,
+    ...(period.name === 'CUSTOM' ? {
+      from: period.from.toISOString(),
+      to: period.to.toISOString()
+    } : {})
+  });
+
+  const previousPeriod = shiftPeriod(period);
+  const previous = await queryMetric(tenantId, {
+    metric: metric.name,
+    period: 'CUSTOM',
+    from: previousPeriod.from.toISOString(),
+    to: previousPeriod.to.toISOString(),
+    dimensions
+  });
+
+  return {
+    ok: true,
+    insight: summarizeInsight(metric, current, previous)
+  };
+}
+
 module.exports = {
   queryMetric,
   listMetrics,
   listMappings,
   saveMapping,
   deleteMapping,
-  getMetricStatus
+  getMetricStatus,
+  getInsight
 };
