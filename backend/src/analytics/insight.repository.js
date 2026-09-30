@@ -117,3 +117,11 @@ exports.listInsights = async (tenantId, input = {}) => {
   const rows = await db.query(sql, params);
   return rows.map(rowToInsight);
 };
+
+exports.getInsightById = async (tenantId, id) => {
+  const rows = await db.query(
+    'SELECT ' + columns + ' FROM ANALYTICS_INSIGHT WHERE TENANT_ID=? AND ID=?',
+    [tenantId, id]
+  );
+  return rowToInsight(rows[0] || null);
+};
