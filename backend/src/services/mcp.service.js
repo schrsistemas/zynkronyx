@@ -1,7 +1,7 @@
-const analytics=require('./analytics/analytics.service');
-const forecast=require('./analytics/forecast.service');
-const anomaly=require('./analytics/anomaly.service');
-const insight=require('./analytics/insight.repository');
+const analytics=require('../analytics/analytics.service');
+const forecast=require('../analytics/forecast.service');
+const anomaly=require('../analytics/anomaly.service');
+const insight=require('../analytics/insight.repository');
 
 const TOOLS=Object.freeze({
   analytics_query:{
