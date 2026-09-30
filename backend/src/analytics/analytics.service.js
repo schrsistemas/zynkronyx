@@ -4,6 +4,7 @@ const periods = require('./period.resolver');
 const builder = require('./query.builder');
 const audit = require('../services/security.audit.service');
 const insightRepo = require('./insight.repository');
+const db = require('../services/db.service');
 
 function invalidQuery(details) {
   const error = new Error('ANALYTICS_INVALID_QUERY');
@@ -24,25 +25,50 @@ function validateMetricName(name) {
   return metric;
 }
 
-function validateBaseMappings(metric, mappings) {
-  const missing = (metric.requiredFields || []).filter(field => !mappings[field] || mappings[field].STATUS !== 'ACTIVE');
-  if (missing.length) {
-    const error = new Error('ANALYTICS_METRIC_NOT_CONFIGURED');
-    error.code = 'ANALYTICS_METRIC_NOT_CONFIGURED';
-    error.status = 409;
-    error.details = { metric: metric.name, missing: missing.map(field => metric.entity + '.' + field) };
-    throw error;
-  }
+function parseMappingMetadata(mapping) {
+  if (!mapping) return {};
+  if (mapping.METADATA && typeof mapping.METADATA === 'object') return mapping.METADATA;
+  try { return mapping.METADATA ? JSON.parse(mapping.METADATA) : {}; } catch { return {}; }
+}
 
-  const sourceNames = new Set(
-    (metric.requiredFields || []).map(field => mappings[field].SOURCE_NAME + '|' + mappings[field].SOURCE_TYPE)
-  );
-  if (sourceNames.size !== 1 || mappings[metric.requiredFields[0]].SOURCE_TYPE !== 'TABLE') {
-    const error = new Error('ANALYTICS_UNSUPPORTED_SOURCE');
-    error.code = 'ANALYTICS_UNSUPPORTED_SOURCE';
-    error.status = 409;
-    throw error;
+function resolveTenantIsolation(metric,mappings) {
+  const fields=metric.requiredFields||[];
+  const configs=fields.map(field=>({field,mapping:mappings[field],metadata:parseMappingMetadata(mappings[field])}));
+  const modes=new Set(configs.map(item=>String(item.mapping.ISOLATION_MODE||item.metadata.isolation_mode||'').trim().toUpperCase()));
+  if(modes.size!==1) {
+    const error=new Error('ANALYTICS_TENANT_ISOLATION_NOT_CONFIGURED'); error.code=error.message; error.status=409; throw error;
   }
+  const mode=[...modes][0];
+  if(mode==='DEDICATED_SOURCE') return {mode};
+  if(mode==='TENANT_COLUMN') {
+    const tenantField=String(configs[0].mapping.TENANT_FIELD||configs[0].metadata.tenant_field||'').trim();
+    const tenantValue=configs[0].mapping.TENANT_VALUE??configs[0].metadata.tenant_value;
+    if(!/^[A-Za-z_][A-Za-z0-9_$]*$/.test(tenantField)||tenantValue===null||tenantValue===undefined||String(tenantValue)==='') {
+      const error=new Error('ANALYTICS_TENANT_ISOLATION_NOT_CONFIGURED'); error.code=error.message; error.status=409; throw error;
+    }
+    for(const item of configs) {
+      const field=String(item.mapping.TENANT_FIELD||item.metadata.tenant_field||'').trim();
+      const value=item.mapping.TENANT_VALUE??item.metadata.tenant_value;
+      if(field!==tenantField||String(value)!==String(tenantValue)) {
+        const error=new Error('ANALYTICS_TENANT_ISOLATION_MISMATCH'); error.code=error.message; error.status=409; throw error;
+      }
+    }
+    return {mode,tenantField,tenantValue};
+  }
+  const error=new Error('ANALYTICS_TENANT_ISOLATION_NOT_CONFIGURED'); error.code=error.message; error.status=409; throw error;
+}
+
+function validateBaseMappings(metric, mappings) {
+  const missing=(metric.requiredFields||[]).filter(field=>!mappings[field]||mappings[field].STATUS!=='ACTIVE');
+  if(missing.length){
+    const error=new Error('ANALYTICS_METRIC_NOT_CONFIGURED'); error.code=error.message; error.status=409;
+    error.details={metric:metric.name,missing:missing.map(field=>metric.entity+'.'+field)}; throw error;
+  }
+  const sourceNames=new Set((metric.requiredFields||[]).map(field=>mappings[field].SOURCE_NAME+'|'+mappings[field].SOURCE_TYPE));
+  if(sourceNames.size!==1||mappings[metric.requiredFields[0]].SOURCE_TYPE!=='TABLE'){
+    const error=new Error('ANALYTICS_UNSUPPORTED_SOURCE'); error.code=error.message; error.status=409; throw error;
+  }
+  return resolveTenantIsolation(metric,mappings);
 }
 
 async function getMetricStatus(tenantId, metric) {
@@ -67,11 +93,17 @@ async function getMetricStatus(tenantId, metric) {
   const missing = (metric.requiredFields || [])
     .filter(field => !mappings[field] || mappings[field].STATUS !== 'ACTIVE')
     .map(field => metric.entity + '.' + field);
+  let isolation = null;
+  if (!missing.length) {
+    try { isolation = resolveTenantIsolation(metric, mappings); }
+    catch (error) { missing.push('TENANT_ISOLATION'); }
+  }
 
   return {
     ...metric,
     configured: missing.length === 0,
-    missing
+    missing,
+    isolation
   };
 }
 
@@ -94,7 +126,7 @@ async function queryMetric(tenantId, input = {}) {
 
     const revenue = catalog.getMetric('revenue');
     const mappings = await repo.getMappingsForMetric(tenantId, revenue);
-    validateBaseMappings(revenue, mappings);
+    const isolation = validateBaseMappings(revenue, mappings);
 
     const query = builder.buildQuery(metric, {
       revenue: {
@@ -102,20 +134,20 @@ async function queryMetric(tenantId, input = {}) {
         date: mappings.occurred_at,
         value: mappings.total
       }
-    }, period, dimensions);
+    }, period, dimensions, isolation);
 
-    const rows = await require('../services/db.service').query(query.sql, query.params);
+    const rows = await db.query(query.sql, query.params);
     return formatResult(metric, period, dimensions, rows);
   }
 
   const mappings = await repo.getMappingsForMetric(tenantId, metric);
-  validateBaseMappings(metric, mappings);
+  const isolation = validateBaseMappings(metric, mappings);
 
   const query = builder.buildQuery(metric, {
     source: mappings[metric.requiredFields[0]],
     date: mappings.occurred_at,
     value: mappings[metric.field]
-  }, period, dimensions);
+  }, period, dimensions, isolation);
 
   const rows = await require('../services/db.service').query(query.sql, query.params);
   return formatResult(metric, period, dimensions, rows);
@@ -181,6 +213,13 @@ async function saveMapping(tenantId, input = {}, correlationId = null) {
   const sourceType = String(input.source_type || input.sourceType || 'TABLE').trim().toUpperCase();
   const dataType = String(input.data_type || input.dataType || 'TEXT').trim().toUpperCase();
   const status = String(input.status || 'ACTIVE').trim().toUpperCase();
+  const isolationMode = String(input.isolation_mode || input.isolationMode || 'TENANT_COLUMN').trim().toUpperCase();
+  const tenantField = isolationMode === 'TENANT_COLUMN'
+    ? normalizeIdentifier(input.tenant_field || input.tenantField, 'tenant_field')
+    : null;
+  const tenantValue = isolationMode === 'TENANT_COLUMN'
+    ? (input.tenant_value ?? input.tenantValue)
+    : null;
 
   if (sourceType !== 'TABLE') {
     const error = new Error('ANALYTICS_UNSUPPORTED_SOURCE');
@@ -189,6 +228,9 @@ async function saveMapping(tenantId, input = {}, correlationId = null) {
     throw error;
   }
 
+  if (!['DEDICATED_SOURCE','TENANT_COLUMN'].includes(isolationMode)) { const error=new Error('ANALYTICS_TENANT_ISOLATION_NOT_CONFIGURED'); error.code=error.message; error.status=400; throw error; }
+  if (isolationMode === 'TENANT_COLUMN' && (tenantValue === null || tenantValue === undefined || String(tenantValue) === '')) { const error=new Error('ANALYTICS_TENANT_ISOLATION_NOT_CONFIGURED'); error.code=error.message; error.status=400; throw error; }
+
   if (!['ACTIVE', 'DISABLED'].includes(status)) {
     const error = new Error('ANALYTICS_INVALID_MAPPING_STATUS');
     error.code = 'ANALYTICS_INVALID_MAPPING_STATUS';
@@ -196,7 +238,9 @@ async function saveMapping(tenantId, input = {}, correlationId = null) {
     throw error;
   }
 
-  const mapping = await repo.upsertMapping({
+  let mapping;
+  await db.withTransaction(async tx => {
+    const txMapping = await repo.upsertMapping({
     tenantId,
     entityName,
     fieldName,
@@ -205,20 +249,30 @@ async function saveMapping(tenantId, input = {}, correlationId = null) {
     sourceField,
     dataType,
     status,
+    isolationMode,
+    tenantField,
+    tenantValue,
     metadata: input.metadata
   });
-  await audit.record({
-    tenantId,
-    correlationId,
-    action: 'ANALYTICS_MAPPING_UPSERTED',
+  await db.withTransaction(async tx => {
+    const txMapping = await repo.upsertMapping({
+      tenantId,entityName,fieldName,sourceType,sourceName,sourceField,dataType,status,isolationMode,tenantField,tenantValue,metadata: input.metadata
+    }, tx);
+    await audit.recordTx(tx, {
+      tenantId,
+      correlationId,
+      action: 'ANALYTICS_MAPPING_UPSERTED',
     result: 'ALLOWED',
     metadata: {
       entity_name: entityName,
       field_name: fieldName,
       source_type: sourceType,
       source_name: sourceName,
-      source_field: sourceField
+      source_field: sourceField,
+      isolation_mode: isolationMode
     }
+    });
+    mapping = txMapping;
   });
   return mapping;
 }
@@ -233,13 +287,15 @@ async function deleteMapping(tenantId, input = {}, correlationId = null) {
     error.status = 404;
     throw error;
   }
-  await repo.deleteMapping(tenantId, entityName, fieldName);
-  await audit.record({
-    tenantId,
-    correlationId,
-    action: 'ANALYTICS_MAPPING_DELETED',
-    result: 'ALLOWED',
-    metadata: { entity_name: entityName, field_name: fieldName }
+  await db.withTransaction(async tx => {
+    await repo.deleteMapping(tenantId, entityName, fieldName, tx);
+    await audit.recordTx(tx, {
+      tenantId,
+      correlationId,
+      action: 'ANALYTICS_MAPPING_DELETED',
+      result: 'ALLOWED',
+      metadata: { entity_name: entityName, field_name: fieldName }
+    });
   });
   return existing;
 }
