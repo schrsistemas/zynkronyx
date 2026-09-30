@@ -261,6 +261,7 @@ function AnalyticsCenter({authVersion}) {
  const [period,setPeriod]=useState("LAST_90_DAYS");
  const [rows,setRows]=useState([]);
  const [mappings,setMappings]=useState([]);
+ const [insight,setInsight]=useState(null);
  const [loading,setLoading]=useState(false);
  const [error,setError]=useState(null);
  const auth=authHeaders();
@@ -277,6 +278,15 @@ function AnalyticsCenter({authVersion}) {
    setMetrics(mj.results||[]);
    setMappings(mapj.results||[]);
   } catch(e) { setError(e.message); }
+ }
+
+ async function runInsight() {
+  setLoading(true); setError(null); setInsight(null);
+  try {
+   const r=await fetch(API+"/analytics/insights",{method:"POST",headers:{"Content-Type":"application/json",...auth},body:JSON.stringify({metric,period,dimensions:["month"]})});
+   const j=await r.json(); if(!r.ok) throw new Error(j.error||"Falha ao calcular insight");
+   setInsight(j.insight||null);
+  } catch(e) { setError(e.message); } finally { setLoading(false); }
  }
 
  async function query() {
@@ -320,6 +330,7 @@ function AnalyticsCenter({authVersion}) {
      {["TODAY","YESTERDAY","THIS_MONTH","LAST_MONTH","LAST_30_DAYS","LAST_90_DAYS","YTD"].map(x=><option key={x}>{x}</option>)}
     </select>
     <button disabled={loading||configured===false} onClick={query}>{loading?"Consultando...":"Consultar"}</button>
+    <button disabled={loading||configured===false} onClick={runInsight}>{loading?"Calculando...":"Gerar insight"}</button>
    </div>
    {configured===false&&<div className="resultBox">Métrica ainda não configurada para este tenant. Configure os mappings antes de consultar.</div>}
   </div>
@@ -328,6 +339,16 @@ function AnalyticsCenter({authVersion}) {
    {!rows.length?<div className="emptyState"><h2>Sem dados</h2><p>Execute uma consulta configurada. O painel não inventa valores.</p></div>:
     rows.map((row,i)=><div className="row" key={row.period||i}><div><strong>{row.period}</strong><small>{metric}</small></div><span className="status">{Number(row.value).toLocaleString("pt-BR",{maximumFractionDigits:2})}</span></div>)}
   </div>
+  {insight&&<div className="panel">
+   <div className="sectionTitle"><h3>Insight determinístico</h3><span>{insight.type}</span></div>
+   <div className="stats">
+    <Stat title="Atual" value={Number(insight.current).toLocaleString("pt-BR",{maximumFractionDigits:2})} note={metric}/>
+    <Stat title="Anterior" value={Number(insight.previous).toLocaleString("pt-BR",{maximumFractionDigits:2})} note="período anterior"/>
+    <Stat title="Variação" value={insight.variation_percent==null?"—":insight.variation_percent+"%"} note="comparação direta"/>
+    <Stat title="Método" value="DETERMINISTIC" note="sem LLM"/>
+   </div>
+   <div className="resultBox"><strong>{insight.explanation}</strong><br/><small>Threshold: ±10%. Evidência: {insight.evidence.current_points} pontos atuais / {insight.evidence.previous_points} anteriores.</small></div>
+  </div>}
   <div className="panel">
    <div className="sectionTitle"><h3>Semantic Mapping</h3><span>{mappings.length} registros</span></div>
    {!mappings.length?<div className="emptyState"><p>Nenhum mapping retornado pela API.</p></div>:
