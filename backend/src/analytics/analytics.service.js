@@ -2,6 +2,7 @@ const repo = require('./analytics.repository');
 const catalog = require('./metric.catalog');
 const periods = require('./period.resolver');
 const builder = require('./query.builder');
+const audit = require('../services/security.audit.service');
 
 function invalidQuery(details) {
   const error = new Error('ANALYTICS_INVALID_QUERY');
@@ -78,6 +79,9 @@ async function queryMetric(tenantId, input = {}) {
 
   const metric = validateMetricName(input.metric);
   const period = periods.resolvePeriod(input.period, input);
+  const dimensions = Array.isArray(input.dimensions) && input.dimensions.length
+    ? input.dimensions
+    : ['month'];
 
   if (metric.type === 'DERIVED') {
     if (metric.name !== 'average_ticket') {
@@ -97,10 +101,10 @@ async function queryMetric(tenantId, input = {}) {
         date: mappings.occurred_at,
         value: mappings.total
       }
-    }, period, input.dimensions || []);
+    }, period, dimensions);
 
     const rows = await require('../services/db.service').query(query.sql, query.params);
-    return formatResult(metric, period, input.dimensions || [], rows);
+    return formatResult(metric, period, dimensions, rows);
   }
 
   const mappings = await repo.getMappingsForMetric(tenantId, metric);
@@ -191,7 +195,7 @@ async function saveMapping(tenantId, input = {}) {
     throw error;
   }
 
-  return repo.upsertMapping({
+  const mapping = await repo.upsertMapping({
     tenantId,
     entityName,
     fieldName,
@@ -202,12 +206,33 @@ async function saveMapping(tenantId, input = {}) {
     status,
     metadata: input.metadata
   });
+  await audit.record({
+    tenantId,
+    action: 'ANALYTICS_MAPPING_UPSERTED',
+    result: 'ALLOWED',
+    metadata: {
+      entity_name: entityName,
+      field_name: fieldName,
+      source_type: sourceType,
+      source_name: sourceName,
+      source_field: sourceField
+    }
+  });
+  return mapping;
 }
 
-async function deleteMapping(tenantId, input) {
+async function deleteMapping(tenantId, input = {}) {
   const entityName = normalizeIdentifier(input.entity_name || input.entityName, 'entity_name');
   const fieldName = normalizeIdentifier(input.field_name || input.fieldName, 'field_name');
-  return repo.deleteMapping(tenantId, entityName, fieldName);
+  const existing = await repo.getMapping(tenantId, entityName, fieldName);
+  if (!existing) {
+    const error = new Error('ANALYTICS_MAPPING_NOT_FOUND');
+    error.code = 'ANALYTICS_MAPPING_NOT_FOUND';
+    error.status = 404;
+    throw error;
+  }
+  await repo.deleteMapping(tenantId, entityName, fieldName);
+  return existing;
 }
 
 module.exports = {
