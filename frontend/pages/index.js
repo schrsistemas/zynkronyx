@@ -264,6 +264,8 @@ function AnalyticsCenter({authVersion}) {
  const [insight,setInsight]=useState(null);
  const [insights,setInsights]=useState([]);
  const [aiExplanation,setAiExplanation]=useState(null);
+ const [nlQuery,setNlQuery]=useState("");
+ const [nlResult,setNlResult]=useState(null);
  const [loading,setLoading]=useState(false);
  const [error,setError]=useState(null);
  const auth=authHeaders();
@@ -309,6 +311,15 @@ function AnalyticsCenter({authVersion}) {
   } catch(e) { setError(e.message); } finally { setLoading(false); }
  }
 
+ async function runNlQuery() {
+  setLoading(true); setError(null); setNlResult(null);
+  try {
+   const r=await fetch(API+"/analytics/nl-query",{method:"POST",headers:{"Content-Type":"application/json",...auth},body:JSON.stringify({query:nlQuery})});
+   const j=await r.json(); if(!r.ok) throw new Error(j.error||"Falha na consulta em linguagem natural");
+   setNlResult(j);
+  } catch(e) { setError(e.message); } finally { setLoading(false); }
+ }
+
  async function query() {
   setLoading(true); setError(null);
   try {
@@ -341,6 +352,20 @@ function AnalyticsCenter({authVersion}) {
    <Stat title="Configuradas" value={metrics.filter(x=>x.configured).length} note="tenant atual"/>
    <Stat title="Mappings" value={mappings.length} note="semantic mappings"/>
    <Stat title="Fonte" value="SGBD" note="source of truth"/>
+  </div>
+  <div className="panel">
+   <div className="sectionTitle"><h3>Natural Language Analytics</h3><span>resolver controlado · sem SQL gerado</span></div>
+   <div className="securityForm">
+    <input value={nlQuery} onChange={e=>setNlQuery(e.target.value)} placeholder="Ex.: Compare minha receita dos últimos 90 dias por mês" />
+    <button disabled={loading||!nlQuery.trim()} onClick={runNlQuery}>{loading?"Resolvendo...":"Perguntar"}</button>
+   </div>
+   {nlResult&&<div className="resultBox">
+    <strong>{nlResult.intent?.metric}</strong> · {nlResult.intent?.period}
+    <br/><small>Intent: {nlResult.intent?.operation} · resolução {nlResult.intent?.confidence?.kind}</small>
+    <div className="tableWrap"><table><thead><tr><th>Período</th><th>Valor</th></tr></thead><tbody>
+     {(nlResult.result?.data||[]).map((row,i)=><tr key={i}><td>{row.period}</td><td>{Number(row.value).toLocaleString("pt-BR",{maximumFractionDigits:2})}</td></tr>)}
+    </tbody></table></div>
+   </div>}
   </div>
   <div className="panel">
    <div className="sectionTitle"><h3>Consulta</h3><span>SQL não é exposto ao usuário</span></div>
