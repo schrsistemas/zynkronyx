@@ -210,3 +210,28 @@ Recommendations are persisted, idempotent per insight, auditable and always crea
 `POST /analytics/anomalies` applies a statistical baseline to a metric time series. V1 requires at least six points, computes the historical mean and sample standard deviation, and evaluates the latest point using a configurable z-score threshold (default `2.5`).
 
 An insufficient history or zero historical variance is reported explicitly; neither is converted into a false anomaly. This is distinct from the deterministic `POSITIVE_TREND`/`NEGATIVE_TREND` classifications in Insight Engine V1.
+
+
+## Forecasting V1
+
+`POST /analytics/forecast` generates a deterministic monthly trend extrapolation from an existing Analytics metric series.
+
+Example:
+
+```json
+{
+  "metric": "revenue",
+  "period": "YTD",
+  "horizon": 3
+}
+```
+
+V1 uses ordinary least-squares linear trend fitting over the validated historical monthly series. It requires at least six observations and limits the horizon to twelve months.
+
+The result exposes:
+- point forecasts for future months;
+- fitted slope/intercept;
+- training-series (R²) and residual standard error as diagnostics;
+- explicit methodology and limitations.
+
+V1 intentionally does **not** expose prediction intervals. A prediction interval requires assumptions about the forecast-error process; those assumptions are not treated as validated merely because a regression can be fitted. Forecasting is therefore an extrapolation baseline, not a guarantee or causal prediction. Linear regression forecasting is a standard least-squares approach, but time-series evaluation and residual diagnostics are needed before treating it as a production-grade probabilistic forecast. citeturn3search1turn3search4turn3search5
