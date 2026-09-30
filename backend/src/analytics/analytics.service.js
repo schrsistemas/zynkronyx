@@ -232,6 +232,12 @@ async function deleteMapping(tenantId, input = {}) {
     throw error;
   }
   await repo.deleteMapping(tenantId, entityName, fieldName);
+  await audit.record({
+    tenantId,
+    action: 'ANALYTICS_MAPPING_DELETED',
+    result: 'ALLOWED',
+    metadata: { entity_name: entityName, field_name: fieldName }
+  });
   return existing;
 }
 
