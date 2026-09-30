@@ -450,3 +450,9 @@ Próximas evoluções naturais incluem:
 ---
 
 **Zynkronyx — integração, conhecimento e inteligência operacional sob governança.**
+
+### Insight Engine V1
+- Deterministic comparison against the previous equivalent period.
+- Persisted tenant-scoped insights with `POSITIVE_TREND`, `NEGATIVE_TREND`, `STABLE`, and `NEW_BASELINE` classifications.
+- API endpoints for generation and history retrieval.
+- No causal inference or statistical anomaly claims are made by this V1 heuristic layer.
