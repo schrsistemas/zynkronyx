@@ -81,11 +81,14 @@ Example:
   "source_name": "PEDIDO",
   "source_field": "VALOR_TOTAL",
   "data_type": "DECIMAL",
-  "status": "ACTIVE"
+  "status": "ACTIVE",
+  "isolation_mode": "TENANT_COLUMN",
+  "tenant_field": "TENANT_ID",
+  "tenant_value": 7
 }
 ```
 
-The same entity can be mapped differently for another tenant.
+The same entity can be mapped differently for another tenant. Every active mapping must explicitly declare physical tenant isolation. Use `TENANT_COLUMN` with `tenant_field` and `tenant_value` for shared tables, or `DEDICATED_SOURCE` only when the configured physical source is independently isolated per tenant.
 
 `DELETE /analytics/mappings`
 
@@ -102,6 +105,9 @@ The metric catalog is server controlled. Clients and LLMs never provide executab
 ## Security rules
 
 - All mappings are tenant scoped.
+- Analytics queries fail closed unless physical tenant isolation is explicitly configured.
+- `TENANT_COLUMN` adds a parameterized tenant predicate to the generated SQL; `DEDICATED_SOURCE` is reserved for physically isolated source tables.
+- Mapping changes and their audit events are committed in the same database transaction.
 - Physical identifiers are validated against a strict identifier grammar.
 - Values are always sent as SQL parameters.
 - Only registered mappings can resolve physical source identifiers.
