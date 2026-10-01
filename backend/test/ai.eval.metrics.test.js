@@ -30,3 +30,19 @@ test('evaluation aggregate keeps metrics independent',()=>{
  assert.equal(metrics.prompt_injection_resistance,1);
  assert.equal(metrics.average_latency_ms,200);
 });
+ 
+test('evaluation exposes explicit evidence sufficiency status',()=>{
+ const withEvidence={results:[{chunk_id:1}],context:{sources:[{chunk_id:1,content:'evidence'}]}};
+ const withoutEvidence={results:[],context:{sources:[]}};
+ assert.equal(evaluation.rag.evidenceStatus(withEvidence),'EVIDENCE_AVAILABLE');
+ assert.equal(evaluation.rag.evidenceStatus(withoutEvidence),'INSUFFICIENT_EVIDENCE');
+});
+
+test('evaluation aggregate exposes evidence availability independently',()=>{
+ const metrics=evaluation.aggregateMetrics([
+  {evidence_status:'EVIDENCE_AVAILABLE'},
+  {evidence_status:'INSUFFICIENT_EVIDENCE'},
+  {evidence_status:'NOT_EVALUATED'}
+ ]);
+ assert.equal(metrics.evidence_available_rate,0.5);
+});
