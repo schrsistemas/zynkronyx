@@ -3,7 +3,7 @@ const crypto=require('node:crypto');
 const DEFAULT_VALIDATION_RATIO=0.2;
 const SECRET_PATTERNS=[
   /(?:sk-[A-Za-z0-9_-]{16,})/g,
-  /(?:api[_-]?key|access[_-]?token|refresh[_-]?token|password|secret)\s*[:=]\s*[^\s,;]+/gi,
+  /(?:api[_-]?key|access[_-]?token|refresh[_-]?token|token|password|secret)\s*[:=]\s*[^\s,;]+/gi,
   /Bearer\s+[A-Za-z0-9._-]+/gi
 ];
 const PII_PATTERNS=[
@@ -25,7 +25,6 @@ function scrubExample(example={}){
   messages:messages.map(m=>({...m,content:scrubText(m.content)}))
  };
 }
-function stableJson(value){return JSON.stringify(value,Object.keys(value).sort());}
 function fingerprint(example){return crypto.createHash('sha256').update(JSON.stringify(example)).digest('hex');}
 function datasetFingerprint(examples){return crypto.createHash('sha256').update(JSON.stringify(examples)).digest('hex');}
 
