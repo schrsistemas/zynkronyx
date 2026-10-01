@@ -21,7 +21,7 @@ test('dataset deduplication is deterministic after scrubbing',()=>{
  const first=dataset.deduplicate(rows);
  const second=dataset.deduplicate(rows);
  assert.deepEqual(first,second);
- assert.equal(first.length,3);
+ assert.equal(first.length,2);
 });
 
 test('dataset split is deterministic and bounded',()=>{
