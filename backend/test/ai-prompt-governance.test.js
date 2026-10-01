@@ -49,7 +49,7 @@ test('evaluation gate can pass independently of canary status',async()=>{
   const gate=await service.evaluationGate(7,9);
   assert.equal(gate.prompt_version_id,9);
   assert.equal(gate.candidate_score,.9);
-  assert.equal(gate.baseline_score,.8);
+  assert.ok(Math.abs(gate.baseline_score-.8)<1e-12);
   assert.equal(gate.candidate_eval_count,3);
 });
 
