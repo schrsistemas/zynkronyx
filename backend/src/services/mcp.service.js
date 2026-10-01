@@ -3,6 +3,7 @@ const forecast=require('../analytics/forecast.service');
 const anomaly=require('../analytics/anomaly.service');
 const insight=require('../analytics/insight.repository');
 const contracts=require('./mcp.contracts.service');
+const audit=require('./mcp.audit.service');
 
 const TOOLS=Object.freeze({
   analytics_query:{
@@ -37,17 +38,25 @@ function assertPermission(req,tool){
  const required=TOOLS[tool]?.requires||[];
  if(required.length&&!required.some(p=>permissions.has(p))){const e=new Error('MCP_PERMISSION_DENIED');e.code=e.message;e.status=403;throw e;}
 }
-async function call(req,name,args={}){
- if(!TOOLS[name]){const e=new Error('MCP_TOOL_NOT_FOUND');e.code=e.message;e.status=404;throw e;}
- const contract=contracts.getContract(name);
- if(contract.tenantRequired&&!req?.tenant?.id){const e=new Error('TENANT_CONTEXT_REQUIRED');e.code=e.message;e.status=401;throw e;}
- assertPermission(req,name);
- if(contract.auditRequired&&!req?.correlationId){const e=new Error('MCP_CORRELATION_ID_REQUIRED');e.code=e.message;e.status=400;throw e;}
- contracts.validateArgs(name,args);
- const tenantId=req.tenant.id;
- if(name==='analytics_query')return analytics.queryMetric(tenantId,args);
- if(name==='analytics_forecast')return forecast.forecastMetric(tenantId,args);
- if(name==='analytics_anomaly')return anomaly.analyzeMetric(tenantId,args);
- if(name==='analytics_insight')return insight.getInsightById(tenantId,Number(args.insight_id));
+async function call(req,name,args={}) {
+ const started=Date.now(); let contract=null;
+ try{
+  if(!TOOLS[name]){const e=new Error('MCP_TOOL_NOT_FOUND');e.code=e.message;e.status=404;throw e;}
+  contract=contracts.getContract(name);
+  if(contract.tenantRequired&&!req?.tenant?.id){const e=new Error('TENANT_CONTEXT_REQUIRED');e.code=e.message;e.status=401;throw e;}
+  assertPermission(req,name);
+  if(contract.auditRequired&&!req?.correlationId){const e=new Error('MCP_CORRELATION_ID_REQUIRED');e.code=e.message;e.status=400;throw e;}
+  contracts.validateArgs(name,args);
+  const tenantId=req.tenant.id;
+  const operation=name==='analytics_query'?analytics.queryMetric(tenantId,args):name==='analytics_forecast'?forecast.forecastMetric(tenantId,args):name==='analytics_anomaly'?anomaly.analyzeMetric(tenantId,args):name==='analytics_insight'?insight.getInsightById(tenantId,Number(args.insight_id)):null;
+  if(!operation){const e=new Error('MCP_TOOL_NOT_IMPLEMENTED');e.code=e.message;e.status=501;throw e;}
+  const result=await Promise.race([operation,new Promise((_,reject)=>setTimeout(()=>{const e=new Error('MCP_TOOL_TIMEOUT');e.code=e.message;e.status=504;reject(e);},Number(contract.timeoutMs||5000)))]);
+  if(contract.outputSchema?.type==='object'&&(result==null||typeof result!=='object'||Array.isArray(result))){const e=new Error('MCP_OUTPUT_SCHEMA_INVALID');e.code=e.message;e.status=502;throw e;}
+  await audit.record({tenantId,correlationId:req.correlationId,toolName:name,contractVersion:contract.version,sideEffect:contract.sideEffect,status:'SUCCESS',input:args,output:result,latencyMs:Date.now()-started});
+  return result;
+ }catch(error){
+  if(req?.tenant?.id&&req?.correlationId&&contract?.auditRequired) await audit.record({tenantId:req.tenant.id,correlationId:req.correlationId,toolName:name,contractVersion:contract.version,sideEffect:contract.sideEffect,status:'FAILED',input:args,errorCode:error.code||error.message,latencyMs:Date.now()-started});
+  throw error;
+ }
 }
 module.exports={TOOLS,listTools,call};
