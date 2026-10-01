@@ -7,6 +7,7 @@ const releases = require('../services/ai.release.service');
 const refinement = require('../services/ai.refinement.service');
 const mcp = require('../services/mcp.service');
 const skills = require('../services/skills.service');
+const skillExecutor = require('../services/skill.executor.service');
 const router = express.Router();
 
 function requireAiGovernance(req,res,next){
