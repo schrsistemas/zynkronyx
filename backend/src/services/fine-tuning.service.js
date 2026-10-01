@@ -1,4 +1,5 @@
 const crypto=require('node:crypto');
+const dataset=require('./fine-tuning.dataset.service');
 function normalizeExample(input={}){
  const prompt=String(input.prompt||'').trim();
  const completion=String(input.completion||'').trim();
@@ -11,4 +12,4 @@ function validateDataset(examples=[]){
  const errors=[];for(const item of examples){if(!Array.isArray(item.messages)||item.messages.length<2)errors.push(item.id||'UNKNOWN');}
  return {valid:errors.length===0,count:examples.length,errors};
 }
-module.exports={normalizeExample,fingerprint,buildDataset,validateDataset};
+module.exports={normalizeExample,fingerprint,buildDataset,validateDataset,buildDatasetVersion:dataset.buildVersion,scrubDatasetText:dataset.scrubText};
