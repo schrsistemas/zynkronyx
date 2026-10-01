@@ -36,7 +36,7 @@ async function updateStatus(tenantId,id,status,input={}){
  const started=next==='RUNNING'&&!current.STARTED_AT?'CURRENT_TIMESTAMP':null;
  const finished=terminal.has(next)&&!current.FINISHED_AT?'CURRENT_TIMESTAMP':null;
  const sql='UPDATE AI_FINE_TUNE_RUN SET STATUS=?,EXTERNAL_JOB_ID=?,METRICS_JSON=?,OUTPUT_MODEL=?,OUTPUT_MODEL_HASH=?,ERROR_CODE=?,ERROR_MESSAGE=?,CORRELATION_ID=?,STARTED_AT='+ (started||'STARTED_AT') +',FINISHED_AT='+(finished||'FINISHED_AT')+' WHERE TENANT_ID=? AND ID=?';
- await db.execute(sql,[next,input.externalJobId??current.EXTERNAL_JOB_ID||null,JSON.stringify(stable(input.metrics||{})),input.outputModel??current.OUTPUT_MODEL||null,input.outputModelHash??current.OUTPUT_MODEL_HASH||null,input.errorCode??current.ERROR_CODE||null,input.errorMessage??current.ERROR_MESSAGE||null,input.correlationId??current.CORRELATION_ID||null,tenantId,Number(id)]);
+ await db.execute(sql,[next,(input.externalJobId??current.EXTERNAL_JOB_ID??null),JSON.stringify(stable(input.metrics||{})),(input.outputModel??current.OUTPUT_MODEL??null),(input.outputModelHash??current.OUTPUT_MODEL_HASH??null),(input.errorCode??current.ERROR_CODE??null),(input.errorMessage??current.ERROR_MESSAGE??null),(input.correlationId??current.CORRELATION_ID??null),tenantId,Number(id)]);
  return get(tenantId,id);
 }
 module.exports={STATUSES,stable,runHash,validate,create,get,list,updateStatus};
