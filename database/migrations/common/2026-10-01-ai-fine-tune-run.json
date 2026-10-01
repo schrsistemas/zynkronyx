@@ -1,0 +1,15 @@
+{
+  "migration": "2026-10-01-ai-fine-tune-run",
+  "version": 1,
+  "purpose": "Tenant-scoped fine-tuning execution registry and immutable run lineage",
+  "sourceOfTruth": "configured-transactional-sgbd",
+  "entities": ["AI_FINE_TUNE_RUN"],
+  "requirements": {
+    "tenantIsolation": true,
+    "artifactLineage": true,
+    "idempotency": true,
+    "runLifecycle": true,
+    "trainingMetricsLineage": true,
+    "outputModelLineage": true
+  }
+}
