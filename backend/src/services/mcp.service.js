@@ -50,7 +50,8 @@ async function call(req,name,args={}) {
   const tenantId=req.tenant.id;
   const operation=name==='analytics_query'?analytics.queryMetric(tenantId,args):name==='analytics_forecast'?forecast.forecastMetric(tenantId,args):name==='analytics_anomaly'?anomaly.analyzeMetric(tenantId,args):name==='analytics_insight'?insight.getInsightById(tenantId,Number(args.insight_id)):null;
   if(!operation){const e=new Error('MCP_TOOL_NOT_IMPLEMENTED');e.code=e.message;e.status=501;throw e;}
-  const result=await Promise.race([operation,new Promise((_,reject)=>setTimeout(()=>{const e=new Error('MCP_TOOL_TIMEOUT');e.code=e.message;e.status=504;reject(e);},Number(contract.timeoutMs||5000)))]);
+  let timer;const timeout=new Promise((_,reject)=>{timer=setTimeout(()=>{const e=new Error('MCP_TOOL_TIMEOUT');e.code=e.message;e.status=504;reject(e);},Number(contract.timeoutMs||5000));});
+  let result;try{result=await Promise.race([operation,timeout]);}finally{clearTimeout(timer);}
   if(contract.outputSchema?.type==='object'&&(result==null||typeof result!=='object'||Array.isArray(result))){const e=new Error('MCP_OUTPUT_SCHEMA_INVALID');e.code=e.message;e.status=502;throw e;}
   await audit.record({tenantId,correlationId:req.correlationId,toolName:name,contractVersion:contract.version,sideEffect:contract.sideEffect,status:'SUCCESS',input:args,output:result,latencyMs:Date.now()-started});
   return result;
