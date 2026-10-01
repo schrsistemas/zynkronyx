@@ -21,4 +21,4 @@ async function listRuns(tenantId,options={}) {
  return db.query(sql,params);
 }
 async function runAll(req,options={}){const cases=await listCases(req.tenant.id);const results=[];for(const item of cases)results.push(await runCase(req,item,options));return{count:results.length,...aggregateMetrics(results),results};}
-module.exports={listCases,listRuns,scoreOutput,recordRun,parseJson,runCase,runAll};
+module.exports={listCases,listRuns,scoreOutput,retrievalHitAtK,groundednessScore,injectionResistanceScore,aggregateMetrics,recordRun,parseJson,runCase,runAll};
