@@ -13,6 +13,7 @@ const deviceRegistryRoutes = require('./routes/device.registry.routes');
 const auditRoutes = require('./routes/audit.routes');
 const aiRoutes = require('./routes/ai.routes');
 const salesRoutes = require('./routes/sales.routes');
+const analyticsRoutes = require('./routes/analytics.routes');
 const fiscalRoutes = require('./routes/fiscal.routes');
 const legalRoutes = require('./routes/legal.routes');
 
@@ -31,6 +32,7 @@ app.use('/integration/devices',tenant,auth,deviceRegistryRoutes);
 app.use('/audit',tenant,auth,auditRoutes);
 app.use('/ai',tenant,auth,aiRoutes);
 app.use('/sales',tenant,auth,salesRoutes);
+app.use('/analytics',tenant,auth,analyticsRoutes);
 app.use('/fiscal',tenant,auth,fiscalRoutes);
 app.use('/legal',tenant,auth,legalRoutes);
 app.use('/admin',tenant,auth,adminRoutes);

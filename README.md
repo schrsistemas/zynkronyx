@@ -130,7 +130,46 @@ A recuperação possui fallback lexical quando a camada vetorial não está disp
 
 O contexto recuperado é tratado como **dados não confiáveis**, e não como instruções executáveis.
 
-### 4. Governança de IA
+### 4. MCP, Skills e LLM Governance
+
+A plataforma separa quatro responsabilidades:
+
+```
+LLM
+ │
+ ▼
+Intent / Skill
+ │
+ ▼
+MCP Tool Registry
+ │
+ ├── Analytics
+ ├── RAG
+ └── futuros domínios
+ │
+ ▼
+Application Services
+ │
+ ▼
+SGBD / APIs
+```
+
+**MCP** é tratado como uma camada de ferramentas governadas, não como uma autorização implícita. Cada tool possui schema, tenant context e permissões explícitas.
+
+**Skills** são capacidades versionadas com políticas próprias. Uma Skill não ganha permissão para executar operações que o usuário não possui.
+
+**LLM** interpreta, resume, explica e resolve linguagem natural. Ele não recebe acesso arbitrário ao banco e não gera SQL executável.
+
+**Fine-tuning** não é utilizado como substituto de RAG. A base inicial de fine-tuning é construída somente a partir de exemplos validados/deduplicados, com proveniência e tenant quando aplicável. Conhecimento mutável continua no RAG/transactional source.
+
+Endpoints iniciais:
+
+- `GET /ai/mcp/tools`
+- `POST /ai/mcp/call`
+- `GET /ai/skills`
+- `GET /ai/skills/:name`
+
+### 5. Governança de IA
 
 A plataforma possui ciclo de refinamento:
 
@@ -166,7 +205,7 @@ Rotas:
 
 Operações de governança possuem autorização específica e falham fechadas quando não configuradas.
 
-### 5. Aceleração Comercial com IA
+### 6. Aceleração Comercial com IA
 
 O domínio comercial foi criado como uma camada própria, sem transformar o LLM em operador direto do CRM.
 
@@ -214,6 +253,55 @@ Rotas:
 Aprovação e conclusão de ações mutáveis exigem usuários configurados em `SALES_APPROVAL_USERS`.
 
 O scoring comercial agora possui política versionada e pode combinar ICP com sinais de intenção ponderados.
+
+
+### 7. Business Analytics
+
+Analytics V1 adds a deterministic business-metrics layer without turning the LLM into a SQL executor.
+
+Architecture:
+
+```
+ERP / API / DB
+      ↓
+Integration
+      ↓
+Tenant Semantic Mapping
+      ↓
+Controlled Metric Catalog
+      ↓
+Validated Query Builder
+      ↓
+Transactional SGBD
+      ↓
+Analytics Result
+      ↓
+Future: Insights → RAG/AI → Recommendation → Approval → Action
+```
+
+Current metrics:
+
+- `revenue`
+- `order_count`
+- `average_ticket`
+
+Current dimension:
+
+- `month`
+
+Current periods include `TODAY`, `THIS_MONTH`, `LAST_30_DAYS`, `LAST_90_DAYS` and `CUSTOM`.
+
+Endpoints:
+
+- `GET /analytics/metrics`
+- `POST /analytics/query`
+- `GET /analytics/mappings`
+- `POST /analytics/mappings`
+- `DELETE /analytics/mappings`
+
+Physical ERP names are resolved only from tenant-scoped mappings. Client requests and LLM output cannot provide executable SQL. Mapping changes are audited, and mapping administration requires `ANALYTICS_MAPPING_USERS`.
+
+Analytics is derived data; the configured transactional SGBD remains the source of truth. See `docs/analytics-v1.md` for the complete contract.
 
 ## API e segurança
 
@@ -401,3 +489,14 @@ Próximas evoluções naturais incluem:
 ---
 
 **Zynkronyx — integração, conhecimento e inteligência operacional sob governança.**
+
+### Insight Engine V1
+- Deterministic comparison against the previous equivalent period.
+- Persisted tenant-scoped insights with `POSITIVE_TREND`, `NEGATIVE_TREND`, `STABLE`, and `NEW_BASELINE` classifications.
+- API endpoints for generation and history retrieval.
+- No causal inference or statistical anomaly claims are made by this V1 heuristic layer.
+
+### Natural Language Analytics V1
+- Controlled Portuguese-language query resolver backed by the server metric catalog.
+- `POST /analytics/nl-query` maps business language to validated metrics and periods.
+- No arbitrary SQL generation; unsupported metrics are rejected.

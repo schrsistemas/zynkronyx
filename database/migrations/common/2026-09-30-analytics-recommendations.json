@@ -1,0 +1,14 @@
+{
+  "version":1,
+  "purpose":"Tenant-scoped deterministic recommendations derived from analytics insights",
+  "sourceOfTruth":"configured-transactional-sgbd",
+  "entities":["ANALYTICS_RECOMMENDATION"],
+  "requirements":{"tenantIsolation":true,"deterministicRecommendationClassification":true,"humanApproval":true,"auditability":true,"derivedAnalytics":true},
+  "invariants":[
+    "Recommendations are derived from persisted analytics insights",
+    "Recommendations never mutate transactional source data directly",
+    "Every proposed recommendation requires explicit human approval",
+    "All reads and writes are tenant scoped",
+    "The same insight produces at most one persisted recommendation"
+  ]
+}
