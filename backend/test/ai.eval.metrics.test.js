@@ -34,8 +34,8 @@ test('evaluation aggregate keeps metrics independent',()=>{
 test('evaluation exposes explicit evidence sufficiency status',()=>{
  const withEvidence={results:[{chunk_id:1}],context:{sources:[{chunk_id:1,content:'evidence'}]}};
  const withoutEvidence={results:[],context:{sources:[]}};
- assert.equal(evaluation.rag.evidenceStatus(withEvidence),'EVIDENCE_AVAILABLE');
- assert.equal(evaluation.rag.evidenceStatus(withoutEvidence),'INSUFFICIENT_EVIDENCE');
+ assert.equal(evaluation.evidenceStatus(withEvidence),'EVIDENCE_AVAILABLE');
+ assert.equal(evaluation.evidenceStatus(withoutEvidence),'INSUFFICIENT_EVIDENCE');
 });
 
 test('evaluation aggregate exposes evidence availability independently',()=>{
