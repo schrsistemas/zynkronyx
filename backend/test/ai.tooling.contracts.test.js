@@ -17,11 +17,11 @@ test('MCP contract validation rejects missing and invalid arguments',()=>{
 });
 
 test('skill executor rejects tools outside skill policy',async()=>{
- const req={tenant:{id:7},user:{permissions:['CAN_ANALYZE']}};
+ const req={tenant:{id:7},user:{permissions:['CAN_ANALYZE']},correlationId:'qa-skill-policy'};
  await assert.rejects(()=>skills.execute(req,'business_analytics',{steps:[{tool:'unknown_tool',arguments:{}}]}),e=>e.code==='SKILL_TOOL_NOT_ALLOWED');
 });
 
 test('skill executor limits execution steps',async()=>{
- const req={tenant:{id:7},user:{permissions:['CAN_ANALYZE']}};
+ const req={tenant:{id:7},user:{permissions:['CAN_ANALYZE']},correlationId:'qa-skill-limit'};
  await assert.rejects(()=>skills.execute(req,'business_analytics',{steps:[1,2,3,4]}),e=>e.code==='SKILL_STEP_LIMIT_EXCEEDED');
 });
