@@ -14,6 +14,9 @@ async function execute(req,skillName,plan={}){
  const budgetMs=Math.min(Math.max(Number(plan.timeout_ms||MAX_EXECUTION_MS),1),MAX_EXECUTION_MS);
  const correlationId=String(req.correlationId||req.correlation_id||plan.correlation_id||'').trim();
  if(!correlationId)fail('AGENT_CORRELATION_ID_REQUIRED');
+
+ // Fail closed before persistence: reject unauthorized tools before creating an execution record.
+ const plannedDecisions=steps.map(step=>policy.evaluate(skillDef,step,{tenantId:req.tenant.id,approval:step.approval,remainingMs:budgetMs}));
  const exec=await execution.create({
    tenantId:req.tenant.id,agentName:String(plan.agent_name||skillName),skillName:skillDef.name,
    planId:plan.plan_id||null,idempotencyKey:plan.idempotency_key||null,correlationId,
@@ -27,7 +30,7 @@ async function execute(req,skillName,plan={}){
      const remaining=budgetMs-elapsed;
      if(remaining<=0)fail('SKILL_EXECUTION_BUDGET_EXCEEDED',504,{budget_ms:budgetMs});
      await execution.advance(req.tenant.id,exec.id,index+1);
-     const decision=policy.evaluate(skillDef,step,{tenantId:req.tenant.id,approval:step.approval,remainingMs:remaining});
+     const decision=plannedDecisions[index];
      if(decision.timeoutMs>remaining)fail('SKILL_EXECUTION_BUDGET_EXCEEDED',504,{tool:decision.tool,remaining_ms:remaining});
      const result=await mcp.call(req,decision.tool,step.arguments||{});
      results.push({tool:decision.tool,policy:{side_effect:decision.sideEffect,contract_version:decision.contractVersion,approval_id:decision.approval_id},result});
