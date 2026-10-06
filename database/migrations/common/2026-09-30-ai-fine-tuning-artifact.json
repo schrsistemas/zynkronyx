@@ -1,0 +1,8 @@
+{
+  "migration": "2026-09-30-ai-fine-tuning-artifact",
+  "version": 1,
+  "purpose": "Immutable fine-tuning artifact registry and lineage",
+  "sourceOfTruth": "configured-transactional-sgbd",
+  "entities": ["AI_FINE_TUNE_ARTIFACT"],
+  "requirements": {"tenantIsolation":true,"immutableArtifactHash":true,"datasetLineage":true,"promptLineage":true,"trainingConfigLineage":true}
+}

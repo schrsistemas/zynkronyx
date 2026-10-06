@@ -1,0 +1,6 @@
+{
+  "migration":"2026-10-02-ai-model-version","version":1,
+  "purpose":"Tenant-scoped governed model version registry and training lineage",
+  "sourceOfTruth":"configured-transactional-sgbd","entities":["AI_MODEL_VERSION"],
+  "requirements":{"tenantIsolation":true,"immutableModelHash":true,"trainingRunLineage":true,"artifactLineage":true,"evaluationTarget":true}
+}

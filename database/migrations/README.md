@@ -20,7 +20,7 @@ A directory must not be advertised as supported until its migration, adapter, in
 
 ## Current status
 
-- Firebird: executable AI/RAG and AI Sales foundation migrations exist.
+- Firebird: executable AI/RAG, AI Sales, and Analytics V1 foundation migrations exist.
 - PostgreSQL: adapter/migration not yet implemented.
 - SQL Server: adapter/migration not yet implemented.
 - MySQL: adapter/migration not yet implemented.

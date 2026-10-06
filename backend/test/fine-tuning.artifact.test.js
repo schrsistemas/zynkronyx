@@ -1,0 +1,9 @@
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const Module=require('node:module');
+function load(rows=[]){const original=Module._load;const calls=[];const db={query:async()=>rows, nextId:async()=>91,execute:async(sql,p)=>calls.push({sql,p}),dialect:()=>({limit:(sql,n)=>sql+' ROWS '+n})};Module._load=function(request,parent,isMain){if(request==='./db.service'&&parent?.filename?.endsWith('fine-tuning.artifact.service.js'))return db;return original.apply(this,arguments);};delete require.cache[require.resolve('../src/services/fine-tuning.artifact.service')];const service=require('../src/services/fine-tuning.artifact.service');Module._load=original;return{service,db,calls};}
+function input(){return{datasetHash:'a'.repeat(64),datasetVersion:1,examplesCount:10,trainCount:8,validationCount:2,validationRatio:.2,promptVersionId:12,baselinePromptVersionId:11,model:'candidate-model',provider:'test',trainingConfig:{epochs:2},lineage:{feedback_ids:[3,4]}};}
+test('artifact hash is deterministic',()=>assert.equal(load().service.artifactHash(input()),load().service.artifactHash({...input(),trainingConfig:{epochs:2}})));
+test('artifact validation rejects split mismatch',()=>assert.throws(()=>load().service.validate({...input(),trainCount:7}),e=>e.code==='FINE_TUNE_DATASET_SPLIT_MISMATCH'));
+test('artifact creation is idempotent on same tenant and hash',async()=>{const {service}=load([{ID:50,ARTIFACT_HASH:'x',DATASET_HASH:'a'.repeat(64),STATUS:'READY',CREATED_AT:'x'}]);const r=await service.create(7,input());assert.equal(r.idempotent,true);assert.equal(r.ID,50);});
+test('artifact creation persists dataset and prompt lineage',async()=>{const {service,calls}=load([]);const r=await service.create(7,input());assert.equal(r.id,91);assert.equal(calls.length,1);assert.equal(calls[0].p[1],7);assert.equal(calls[0].p[2],r.artifact_hash);assert.equal(calls[0].p[3],input().datasetHash);assert.equal(calls[0].p[10],11);});

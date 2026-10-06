@@ -156,6 +156,7 @@ export default function Home() {
           <Nav active={section==="security"} onClick={()=>setSection("security")} icon="⌑">Security</Nav>
           <Nav active={section==="ai"} onClick={()=>setSection("ai")} icon="✦">AI / RAG</Nav>
           <Nav active={section==="sales"} onClick={()=>setSection("sales")} icon="◫">AI Sales</Nav>
+          <Nav active={section==="analytics"} onClick={()=>setSection("analytics")} icon="▥">Analytics</Nav>
           <Nav active={section==="radar"} onClick={()=>setSection("radar")} icon="⌖">Radar</Nav>
           <Nav active={section==="devices"} onClick={()=>setSection("devices")} icon="⌁">Devices</Nav>
           <Nav active={section==="integrations"} onClick={()=>setSection("integrations")} icon="⚙">Integrations</Nav>
@@ -179,6 +180,7 @@ export default function Home() {
         {section === "security" && <Security authVersion={authVersion} onAuth={()=>setAuthVersion(v=>v+1)}/>}
         {section === "ai" && <AICenter authVersion={authVersion}/>}
         {section === "sales" && <SalesCenter authVersion={authVersion}/>}
+        {section === "analytics" && <AnalyticsCenter authVersion={authVersion}/>}
         {section === "radar" && <Radar/>}
         {section === "devices" && <Devices/>}
         {section === "integrations" && <IntegrationsCenter/>}
@@ -201,7 +203,7 @@ function Nav({active,onClick,icon,children}) {
     aria-current={active?"page":undefined}
   >{icon} <span>{children}</span></button>;
 }
-function title(s) { return ({overview:"System Overview",services:"Services",api:"API Explorer",database:"Database",sync:"Synchronization",devices:"Device Integrations",audit:"Legal Audit",deploy:"Deployments",docs:"Documentation",integrations:"Integrations & Simulator",monitoring:"Monitoring",radar:"Radar Visual",security:"Security",ai:"AI / RAG",sales:"AI Sales"})[s] || "Zynkronyx"; }
+function title(s) { return ({overview:"System Overview",services:"Services",api:"API Explorer",database:"Database",sync:"Synchronization",devices:"Device Integrations",audit:"Legal Audit",deploy:"Deployments",docs:"Documentation",integrations:"Integrations & Simulator",monitoring:"Monitoring",radar:"Radar Visual",security:"Security",ai:"AI / RAG",sales:"AI Sales",analytics:"Business Analytics"})[s] || "Zynkronyx"; }
 function authHeaders(){
   if(typeof window==="undefined") return {};
   const token=sessionStorage.getItem("zynkronyx_token");
@@ -251,6 +253,167 @@ function SyncConsole() {
 }
 
 function Monitoring({status,latency}) { return <div className="panel"><p className="lead">Diagnóstico operacional observado pelo navegador.</p><div className="row"><div><strong>Cloudflare Worker</strong><small>{status?.runtime || "cloudflare-workers"}</small></div><span className={"status " + (status?.ok ? "":"muted")}>{status?.ok ? "online":"offline"}</span></div><div className="row"><div><strong>API latency</strong><small>Última medição</small></div><span className="status">{latency ? latency+" ms":"—"}</span></div><div className="row"><div><strong>Cache policy</strong><small>API responses</small></div><span className="status">no-store</span></div></div>; }
+
+
+function AnalyticsCenter({authVersion}) {
+ const [metrics,setMetrics]=useState([]);
+ const [metric,setMetric]=useState("revenue");
+ const [period,setPeriod]=useState("LAST_90_DAYS");
+ const [rows,setRows]=useState([]);
+ const [mappings,setMappings]=useState([]);
+ const [insight,setInsight]=useState(null);
+ const [insights,setInsights]=useState([]);
+ const [aiExplanation,setAiExplanation]=useState(null);
+ const [nlQuery,setNlQuery]=useState("");
+ const [nlResult,setNlResult]=useState(null);
+ const [loading,setLoading]=useState(false);
+ const [error,setError]=useState(null);
+ const auth=authHeaders();
+
+ async function loadCatalog() {
+  try {
+   const [mr,mr2]=await Promise.all([
+    fetch(API+"/analytics/metrics",{headers:auth,cache:"no-store"}),
+    fetch(API+"/analytics/mappings",{headers:auth,cache:"no-store"})
+   ]);
+   const mj=await mr.json(), mapj=await mr2.json();
+   if(!mr.ok) throw new Error(mj.error||"Falha no catálogo de métricas");
+   if(!mr2.ok) throw new Error(mapj.error||"Falha nos mappings");
+   setMetrics(mj.results||[]);
+   setMappings(mapj.results||[]);
+  } catch(e) { setError(e.message); }
+ }
+
+ async function loadInsights() {
+  try {
+   const r=await fetch(API+"/analytics/insights?metric="+encodeURIComponent(metric)+"&limit=10",{headers:auth,cache:"no-store"});
+   const j=await r.json(); if(!r.ok) throw new Error(j.error||"Falha ao carregar histórico de insights");
+   setInsights(j.results||[]);
+  } catch(e) { setError(e.message); }
+ }
+
+ async function explainInsight(id) {
+  setLoading(true); setError(null); setAiExplanation(null);
+  try {
+   const r=await fetch(API+"/analytics/insights/"+encodeURIComponent(id)+"/explain",{method:"POST",headers:auth});
+   const j=await r.json(); if(!r.ok) throw new Error(j.error||"Falha ao gerar explicação por IA");
+   setAiExplanation(j);
+  } catch(e) { setError(e.message); } finally { setLoading(false); }
+ }
+
+ async function runInsight() {
+  setLoading(true); setError(null); setInsight(null);
+  try {
+   const r=await fetch(API+"/analytics/insights",{method:"POST",headers:{"Content-Type":"application/json",...auth},body:JSON.stringify({metric,period,dimensions:["month"]})});
+   const j=await r.json(); if(!r.ok) throw new Error(j.error||"Falha ao calcular insight");
+   setInsight(j.insight||null);
+   await loadInsights();
+  } catch(e) { setError(e.message); } finally { setLoading(false); }
+ }
+
+ async function runNlQuery() {
+  setLoading(true); setError(null); setNlResult(null);
+  try {
+   const r=await fetch(API+"/analytics/nl-query",{method:"POST",headers:{"Content-Type":"application/json",...auth},body:JSON.stringify({query:nlQuery})});
+   const j=await r.json(); if(!r.ok) throw new Error(j.error||"Falha na consulta em linguagem natural");
+   setNlResult(j);
+  } catch(e) { setError(e.message); } finally { setLoading(false); }
+ }
+
+ async function query() {
+  setLoading(true); setError(null);
+  try {
+   const r=await fetch(API+"/analytics/query",{
+    method:"POST",
+    headers:{"Content-Type":"application/json",...auth},
+    body:JSON.stringify({metric,period,dimensions:["month"]})
+   });
+   const j=await r.json();
+   if(!r.ok) throw new Error(j.error||"Falha na consulta Analytics");
+   setRows(j.data||[]);
+  } catch(e) { setRows([]); setError(e.message); }
+  finally { setLoading(false); }
+ }
+
+ useEffect(()=>{loadCatalog();loadInsights()},[authVersion,metric]);
+
+ const current=metrics.find(x=>x.name===metric);
+ const configured=current?.configured;
+
+ return <div>
+  <div className="hero">
+   <div><span className="pill">BUSINESS ANALYTICS</span><h2>Business Analytics</h2>
+   <p>Métricas determinísticas sobre o SGBD transacional, com mapping semântico por tenant.</p></div>
+   <div className="heroVersion">{metrics.filter(x=>x.configured).length}<br/><small>métricas configuradas</small></div>
+  </div>
+  {error&&<div className="panel resultBox">{error}</div>}
+  <div className="stats">
+   <Stat title="Métricas" value={metrics.length} note="catálogo controlado"/>
+   <Stat title="Configuradas" value={metrics.filter(x=>x.configured).length} note="tenant atual"/>
+   <Stat title="Mappings" value={mappings.length} note="semantic mappings"/>
+   <Stat title="Fonte" value="SGBD" note="source of truth"/>
+  </div>
+  <div className="panel">
+   <div className="sectionTitle"><h3>Natural Language Analytics</h3><span>resolver controlado · sem SQL gerado</span></div>
+   <div className="securityForm">
+    <input value={nlQuery} onChange={e=>setNlQuery(e.target.value)} placeholder="Ex.: Compare minha receita dos últimos 90 dias por mês" />
+    <button disabled={loading||!nlQuery.trim()} onClick={runNlQuery}>{loading?"Resolvendo...":"Perguntar"}</button>
+   </div>
+   {nlResult&&<div className="resultBox">
+    <strong>{nlResult.intent?.metric}</strong> · {nlResult.intent?.period}
+    <br/><small>Intent: {nlResult.intent?.operation} · resolução {nlResult.intent?.confidence?.kind}</small>
+    <div className="tableWrap"><table><thead><tr><th>Período</th><th>Valor</th></tr></thead><tbody>
+     {(nlResult.result?.data||[]).map((row,i)=><tr key={i}><td>{row.period}</td><td>{Number(row.value).toLocaleString("pt-BR",{maximumFractionDigits:2})}</td></tr>)}
+    </tbody></table></div>
+   </div>}
+  </div>
+  <div className="panel">
+   <div className="sectionTitle"><h3>Consulta</h3><span>SQL não é exposto ao usuário</span></div>
+   <div className="securityForm">
+    <select value={metric} onChange={e=>setMetric(e.target.value)}>{metrics.map(m=><option key={m.name} value={m.name}>{m.label} · {m.name}</option>)}</select>
+    <select value={period} onChange={e=>setPeriod(e.target.value)}>
+     {["TODAY","YESTERDAY","THIS_MONTH","LAST_MONTH","LAST_30_DAYS","LAST_90_DAYS","YTD"].map(x=><option key={x}>{x}</option>)}
+    </select>
+    <button disabled={loading||configured===false} onClick={query}>{loading?"Consultando...":"Consultar"}</button>
+    <button disabled={loading||configured===false} onClick={runInsight}>{loading?"Calculando...":"Gerar insight"}</button>
+   </div>
+   {configured===false&&<div className="resultBox">Métrica ainda não configurada para este tenant. Configure os mappings antes de consultar.</div>}
+  </div>
+  <div className="panel">
+   <div className="sectionTitle"><h3>Resultado</h3><span>{rows.length} períodos</span></div>
+   {!rows.length?<div className="emptyState"><h2>Sem dados</h2><p>Execute uma consulta configurada. O painel não inventa valores.</p></div>:
+    rows.map((row,i)=><div className="row" key={row.period||i}><div><strong>{row.period}</strong><small>{metric}</small></div><span className="status">{Number(row.value).toLocaleString("pt-BR",{maximumFractionDigits:2})}</span></div>)}
+  </div>
+  {insight&&<div className="panel">
+   <div className="sectionTitle"><h3>Insight determinístico</h3><span>{insight.type}</span></div>
+   <div className="stats">
+    <Stat title="Atual" value={Number(insight.current).toLocaleString("pt-BR",{maximumFractionDigits:2})} note={metric}/>
+    <Stat title="Anterior" value={Number(insight.previous).toLocaleString("pt-BR",{maximumFractionDigits:2})} note="período anterior"/>
+    <Stat title="Variação" value={insight.variation_percent==null?"—":insight.variation_percent+"%"} note="comparação direta"/>
+    <Stat title="Método" value="DETERMINISTIC" note="sem LLM"/>
+   </div>
+   <div className="resultBox"><strong>{insight.explanation}</strong><br/><small>Threshold: ±10%. Evidência: {insight.evidence.current_points} pontos atuais / {insight.evidence.previous_points} anteriores.</small></div>
+  </div>}
+  <div className="panel">
+   <div className="sectionTitle"><h3>Histórico de insights</h3><span>{insights.length} registros</span></div>
+   {!insights.length?<div className="emptyState"><p>Nenhum insight persistido para esta métrica.</p></div>:
+    insights.map((item,i)=><div className="row" key={item.id||i}>
+     <div><strong>{item.title||item.type}</strong><small>{item.period_start?String(item.period_start).slice(0,10):"—"} · {item.metric}</small></div>
+     <span className="status">{item.variation===null?"—":(Number(item.variation)*100).toFixed(2)+"%"} <button onClick={()=>explainInsight(item.id)} disabled={loading}>IA</button></span>
+    </div>)}
+  </div>
+  {aiExplanation&&<div className="panel">
+   <div className="sectionTitle"><h3>Explicação por IA</h3><span>somente interpretação</span></div>
+   <div className="resultBox"><strong>Os valores permanecem determinísticos.</strong><br/>{typeof aiExplanation.explanation==="string"?aiExplanation.explanation:JSON.stringify(aiExplanation.explanation)}</div>
+   <small>Fontes RAG: {(aiExplanation.sources||[]).length} · Prompt: {aiExplanation.prompt_version||"não informado"}</small>
+  </div>}
+  <div className="panel">
+   <div className="sectionTitle"><h3>Semantic Mapping</h3><span>{mappings.length} registros</span></div>
+   {!mappings.length?<div className="emptyState"><p>Nenhum mapping retornado pela API.</p></div>:
+    mappings.map(m=><div className="row" key={m.ID||m.id}><div><strong>{m.ENTITY_NAME}.{m.FIELD_NAME}</strong><small>{m.SOURCE_NAME}.{m.SOURCE_FIELD}</small></div><span className="status">{m.STATUS}</span></div>)}
+  </div>
+ </div>;
+}
 
 function Devices() {
  const [rows,setRows]=useState([]); const [error,setError]=useState(null); const [loading,setLoading]=useState(false);

@@ -1,6 +1,9 @@
 const db=require('./db.service');
-const CURRENT_POLICY_VERSIONS={PRIVACY_NOTICE:String(process.env.LEGAL_PRIVACY_NOTICE_VERSION||'2026-09-19').trim()};
 
+function currentPolicyVersion(policyType){
+ const versions={PRIVACY_NOTICE:String(process.env.LEGAL_PRIVACY_NOTICE_VERSION||'2026-09-19').trim()};
+ return versions[policyType];
+}
 function required(value,name){const v=String(value||'').trim();if(!v){const e=new Error(name+'_REQUIRED');e.status=400;throw e;}return v;}
 
 async function accept(tenantId,input={}){
@@ -8,9 +11,9 @@ async function accept(tenantId,input={}){
  const policyType=required(input.policyType||input.policy_type||'PRIVACY_NOTICE','POLICY_TYPE');
  const policyVersion=required(input.policyVersion||input.policy_version,'POLICY_VERSION');
  const action=String(input.action||'ACCEPT').trim().toUpperCase();
- const currentVersion=CURRENT_POLICY_VERSIONS[policyType];
- if(action==='ACCEPT' && currentVersion && policyVersion!==currentVersion){const e=new Error('LEGAL_POLICY_VERSION_OUTDATED');e.status=409;e.details={policy_type:policyType,required_version:currentVersion,received_version:policyVersion};throw e;}
- if(!['ACCEPT','REVOKE'].includes(action)){const e=new Error('LEGAL_ACCEPTANCE_ACTION_INVALID');e.status=400;throw e;}
+ if(!['ACCEPT','REVOKE'].includes(action)){const e=new Error('LEGAL_ACCEPTANCE_ACTION_INVALID');e.code=e.message;e.status=400;throw e;}
+ const currentVersion=currentPolicyVersion(policyType);
+ if(action==='ACCEPT'&&currentVersion&&policyVersion!==currentVersion){const e=new Error('LEGAL_POLICY_VERSION_OUTDATED');e.code=e.message;e.status=409;e.details={policy_type:policyType,required_version:currentVersion,received_version:policyVersion};throw e;}
  const id=await db.nextId('LEGAL_ACCEPTANCE');
  await db.execute('INSERT INTO LEGAL_ACCEPTANCE (ID,TENANT_ID,SUBJECT_ID,POLICY_TYPE,POLICY_VERSION,ACTION,CORRELATION_ID,SOURCE) VALUES (?,?,?,?,?,?,?,?)',[id,tenantId,subjectId,policyType,policyVersion,action,input.correlationId||null,input.source||'control-center']);
  return {id:Number(id),tenant_id:Number(tenantId),subject_id:subjectId,policy_type:policyType,policy_version:policyVersion,action};

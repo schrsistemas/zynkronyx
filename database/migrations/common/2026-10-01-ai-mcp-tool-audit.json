@@ -1,0 +1,8 @@
+{
+  "migration":"2026-10-01-ai-mcp-tool-audit",
+  "version":1,
+  "purpose":"Persistent tenant-scoped audit trail for governed MCP tool execution",
+  "sourceOfTruth":"configured-transactional-sgbd",
+  "entities":["AI_MCP_TOOL_AUDIT"],
+  "requirements":{"tenantIsolation":true,"auditability":true,"correlationId":true,"toolLineage":true}
+}
