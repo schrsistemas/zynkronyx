@@ -3,19 +3,14 @@ const assert=require('node:assert/strict');
 const Module=require('node:module');
 
 function load(rows,canaryStatus){
-  process.env.AI_PROMOTION_MIN_EVALS='1';
-  process.env.AI_PROMOTION_MIN_SCORE='0.8';
-  process.env.AI_PROMOTION_MIN_DELTA='-1';
   const original=Module._load;
   const db={
-    query:async(sql)=>{
-      if(sql.includes('AI_PROMPT_RELEASE'))return canaryStatus?[{ID:41,STATUS:canaryStatus}]:[];
-      if(sql.includes('AI_EVAL_RUN'))return [{ID:1,EVAL_CASE_ID:101,SCORE:.9,PROMPT_VERSION_ID:9,CREATED_AT:'2026-09-30T10:00:00Z'},{ID:2,EVAL_CASE_ID:102,SCORE:.9,PROMPT_VERSION_ID:9,CREATED_AT:'2026-09-30T10:00:00Z'},{ID:3,EVAL_CASE_ID:103,SCORE:.9,PROMPT_VERSION_ID:9,CREATED_AT:'2026-09-30T10:00:00Z'},{ID:4,EVAL_CASE_ID:101,SCORE:.8,PROMPT_VERSION_ID:8,CREATED_AT:'2026-09-30T09:00:00Z'},{ID:5,EVAL_CASE_ID:102,SCORE:.8,PROMPT_VERSION_ID:8,CREATED_AT:'2026-09-30T09:00:00Z'},{ID:6,EVAL_CASE_ID:103,SCORE:.8,PROMPT_VERSION_ID:8,CREATED_AT:'2026-09-30T09:00:00Z'}];
-      if(sql.includes('AI_PROMPT_VERSION')&&sql.includes("STATUS='ACTIVE'"))return [{ID:8,TENANT_ID:7,VERSION_NO:3,STATUS:'ACTIVE'}];
-      if(sql.includes('AI_PROMPT_VERSION')&&sql.includes('WHERE ID=?'))return [{ID:9,TENANT_ID:7,VERSION_NO:4,STATUS:'DRAFT'}];
-      return [];
-    },
+    query:async(sql)=>{if(sql.includes('AI_PROMPT_RELEASE'))return canaryStatus?[{ID:41,STATUS:canaryStatus}]:[];if(sql.includes('AI_EVAL_RUN'))return [{SCORE:.9,PROMPT_VERSION_ID:9},{SCORE:.9,PROMPT_VERSION_ID:9},{SCORE:.9,PROMPT_VERSION_ID:9},{SCORE:.8,PROMPT_VERSION_ID:8}];if(sql.includes('AI_PROMPT_VERSION'))return sql.includes("STATUS='ACTIVE'")?[{ID:8,TENANT_ID:7,VERSION_NO:3,STATUS:'ACTIVE'}]:[{ID:9,TENANT_ID:7,VERSION_NO:4,STATUS:'DRAFT'}];return [];},
     dialect:()=>({currentTimestamp:'CURRENT_TIMESTAMP'})
+  };
+  const prompts={
+    getById:async()=>({ID:9,TENANT_ID:7,VERSION_NO:4}),
+    resolve:async()=>({ID:8}),
   };
   Module._load=function(request,parent,isMain){
     if(request==='./db.service'&&parent?.filename?.endsWith('ai.prompt.service.js'))return db;
@@ -29,10 +24,10 @@ function load(rows,canaryStatus){
 
 test('promotion gate is blocked until a passed canary exists',async()=>{
   const {service}=load();
-  const original=service.evaluationGate;
-  service.evaluationGate=async()=>({prompt_version_id:9,candidate_score:.9,baseline_score:.8,candidate_eval_count:4});
-  await assert.rejects(()=>service.promotionGate(7,9),e=>e.code==='PROMOTION_POLICY_NOT_MET');
-  service.evaluationGate=original;
+  await assert.rejects(
+    ()=>service.promotionGate(7,9),
+    e=>e.message==='PROMOTION_POLICY_NOT_MET'&&e.details.canary_passed===false
+  );
 });
 
 test('promotion gate accepts a passed canary',async()=>{
@@ -46,10 +41,11 @@ test('promotion gate accepts a passed canary',async()=>{
 test('evaluation gate can pass independently of canary status',async()=>{
   const {service}=load();
   service.getById=async()=>({ID:9,TENANT_ID:7,VERSION_NO:4,STATUS:'DRAFT'});
+  service.resolve=async()=>({ID:8});
   const gate=await service.evaluationGate(7,9);
   assert.equal(gate.prompt_version_id,9);
   assert.equal(gate.candidate_score,.9);
-  assert.ok(Math.abs(gate.baseline_score-.8)<1e-12);
+  assert.equal(gate.baseline_score,.8);
   assert.equal(gate.candidate_eval_count,3);
 });
 
@@ -58,16 +54,18 @@ test('production rollback records lineage and changes active prompt atomically',
   const calls=[];
   const db={
     query:async(sql,params)=>{
-      if(sql.includes("STATUS='ACTIVE'"))return [{ID:9,VERSION_NO:4}];
-      if(sql.includes('WHERE ID=? AND TENANT_ID=?'))return [{ID:8,VERSION_NO:3,STATUS:'RETIRED'}];
-      if(sql.includes('WHERE ID=? AND (TENANT_ID=? OR TENANT_ID IS NULL)'))return [{ID:8,TENANT_ID:7,VERSION_NO:3,STATUS:'RETIRED'}];
+      if(sql.includes("STATUS='ACTIVE'")) return [{ID:9,VERSION_NO:4}];
+      if(sql.includes('FROM AI_PROMPT_VERSION')&&sql.includes('ID=?')) return [{ID:8,TENANT_ID:7,VERSION_NO:3,STATUS:'RETIRED'}];
       return [];
     },
-    withTransaction:async work=>work({
-      query:db.query,
-      execute:async(sql,params)=>calls.push({sql,params}),
-      nextId:async()=>77
-    }),
+    withTransaction:async(work)=>{
+      const tx={
+        query:db.query,
+        execute:async(sql,params)=>calls.push({sql,params}),
+        nextId:async()=>77
+      };
+      return work(tx);
+    },
     dialect:()=>({currentTimestamp:'CURRENT_TIMESTAMP'})
   };
   Module._load=function(request,parent,isMain){
