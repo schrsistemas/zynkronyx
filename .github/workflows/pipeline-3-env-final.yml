@@ -3,6 +3,12 @@ name: Zynkronyx Pipeline 3 Ambientes FINAL
 on:
   push:
     branches: ["main"]
+    paths:
+      - "backend/**"
+      - "database/**"
+      - "Dockerfile.ci"
+      - "Dockerfile.prod.fix"
+      - ".github/workflows/pipeline-3-env-final.yml"
 
 jobs:
   ci:
