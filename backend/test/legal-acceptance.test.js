@@ -26,7 +26,7 @@ test('LGPD acceptance rejects outdated privacy notice version',async()=>{
  const {service}=load();
  await assert.rejects(
   ()=>service.accept(7,{subjectId:'user-1',policyType:'PRIVACY_NOTICE',policyVersion:'old',action:'ACCEPT'}),
-  e=>e.code==='LEGAL_POLICY_VERSION_OUTDATED'&&e.status===409
+  e=>e.message==='LEGAL_POLICY_VERSION_OUTDATED'&&e.status===409
  );
 });
 
@@ -57,6 +57,6 @@ test('LGPD invalid action is rejected',async()=>{
  const {service}=load();
  await assert.rejects(
   ()=>service.accept(7,{subjectId:'user-1',policyVersion:'2026-09-19',action:'DELETE'}),
-  e=>e.code==='LEGAL_ACCEPTANCE_ACTION_INVALID'&&e.status===400
+  e=>e.message==='LEGAL_ACCEPTANCE_ACTION_INVALID'&&e.status===400
  );
 });
