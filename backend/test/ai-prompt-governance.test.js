@@ -55,7 +55,7 @@ test('production rollback records lineage and changes active prompt atomically',
   const db={
     query:async(sql,params)=>{
       if(sql.includes("STATUS='ACTIVE'")) return [{ID:9,VERSION_NO:4}];
-      if(sql.includes('FROM AI_PROMPT_VERSION')&&sql.includes('ID=?')) return [{ID:8,VERSION_NO:3,STATUS:'RETIRED'}];
+      if(sql.includes('FROM AI_PROMPT_VERSION')&&sql.includes('ID=?')) return [{ID:8,TENANT_ID:7,VERSION_NO:3,STATUS:'RETIRED'}];
       return [];
     },
     withTransaction:async(work)=>{
