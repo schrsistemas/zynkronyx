@@ -3,33 +3,64 @@ name: Deploy Control Center LIVE
 on:
   push:
     branches: [main]
+  pull_request:
+    paths:
+      - "frontend/**"
+      - ".github/workflows/deploy-frontend-live.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: frontend-control-center-live
+  group: frontend-control-center-live-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  contracts:
+    name: Contracts
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
     steps:
-      - uses: actions/checkout@v5
+      - name: Checkout
+        uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v5
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package.json
+
+      - name: Install backend dependencies
+        run: npm install
+
+      - name: Run backend contract/runtime tests
+        run: npm test
+
+  qa:
+    name: Browser and Accessibility QA
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/package.json
 
-      - name: Install dependencies
+      - name: Install application dependencies
         working-directory: frontend
         run: npm install
 
-      - name: Build Control Center
+      - name: Build static Control Center
         working-directory: frontend
         env:
           NEXT_PUBLIC_API_URL: https://mute-grass-9428.schrsistemas.workers.dev
@@ -38,6 +69,52 @@ jobs:
       - name: Verify build output
         working-directory: frontend
         run: test -f out/index.html
+
+      - name: Install browser QA dependencies
+        working-directory: frontend
+        run: npm install --no-save --package-lock=false @playwright/test@1.63.0 @axe-core/playwright@4.13.0
+
+      - name: Install Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Serve static build
+        working-directory: frontend
+        run: |
+          nohup npx --yes serve@14.2.5 out -l 4173 >/tmp/frontend-serve.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl --fail --silent http://127.0.0.1:4173/ >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/frontend-serve.log
+          exit 1
+
+      - name: Browser and accessibility contract
+        working-directory: frontend
+        env:
+          FRONTEND_BASE_URL: http://127.0.0.1:4173
+        run: npx playwright test
+
+      - name: Package validated static build
+        uses: actions/upload-artifact@v4
+        with:
+          name: control-center-static-build
+          path: frontend/out
+          if-no-files-found: error
+          retention-days: 1
+
+  deploy:
+    name: Deploy
+    needs: [contracts, qa]
+    if: github.event_name != 'pull_request' && needs.contracts.result == 'success' && needs.qa.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Download validated static build
+        uses: actions/download-artifact@v4
+        with:
+          name: control-center-static-build
+          path: frontend/out
 
       - name: Install Wrangler
         run: npm install --global wrangler@latest
@@ -61,5 +138,7 @@ jobs:
       - name: Verify production URL
         run: |
           set -euo pipefail
-          curl --fail --silent --show-error --retry 10 --retry-delay 3 --max-time 20             https://zynkronyx-control-center.pages.dev/             -o /tmp/control-center.html
+          curl --fail --silent --show-error --retry 10 --retry-delay 3 --max-time 20 \
+            https://zynkronyx-control-center.pages.dev/ \
+            -o /tmp/control-center.html
           grep -qi "Zynkronyx" /tmp/control-center.html
