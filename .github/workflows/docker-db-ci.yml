@@ -3,6 +3,12 @@ name: Zynkronyx Docker + DB CI (robusto)
 on:
   push:
     branches: ["main"]
+    paths:
+      - "backend/**"
+      - "database/**"
+      - "Dockerfile.prod"
+      - "Dockerfile.prod.fix"
+      - ".github/workflows/docker-db-ci.yml"
 
 jobs:
   full-stack:
