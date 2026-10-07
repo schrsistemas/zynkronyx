@@ -1,0 +1,6 @@
+const crypto=require('node:crypto');
+const db=require('./db.service');
+function stable(v){if(v===null||typeof v!=='object')return v;if(Array.isArray(v))return v.map(stable);return Object.keys(v).sort().reduce((o,k)=>(o[k]=stable(v[k]),o),{});}
+function hash(v){return crypto.createHash('sha256').update(JSON.stringify(stable(v))).digest('hex');}
+async function record(i={}){if(!i.tenantId||!i.correlationId||!i.toolName)return null;try{const id=await db.nextId('AI_MCP_TOOL_AUDIT');await db.execute('INSERT INTO AI_MCP_TOOL_AUDIT (ID,TENANT_ID,CORRELATION_ID,TOOL_NAME,CONTRACT_VERSION,SIDE_EFFECT,STATUS,INPUT_HASH,OUTPUT_HASH,ERROR_CODE,LATENCY_MS) VALUES (?,?,?,?,?,?,?,?,?,?,?)',[id,i.tenantId,String(i.correlationId).slice(0,150),String(i.toolName).slice(0,120),i.contractVersion||null,i.sideEffect||null,i.status||'UNKNOWN',i.input===undefined?null:hash(i.input),i.output===undefined?null:hash(i.output),i.errorCode||null,i.latencyMs==null?null:Number(i.latencyMs)]);return id;}catch{return null;}}
+module.exports={stable,hash,record};

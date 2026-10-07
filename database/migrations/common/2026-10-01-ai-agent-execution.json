@@ -1,0 +1,1 @@
+{"migration":"2026-10-01-ai-agent-execution","version":1,"purpose":"Tenant-scoped governed agent execution lineage and approval state","sourceOfTruth":"configured-transactional-sgbd","entities":["AI_AGENT_EXECUTION"],"requirements":{"tenantIsolation":true,"executionLineage":true,"approvalLineage":true,"idempotency":true,"stepBudget":true,"timeoutBudget":true}}

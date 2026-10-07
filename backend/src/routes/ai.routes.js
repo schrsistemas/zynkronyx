@@ -5,6 +5,9 @@ const evaluation = require('../services/ai.eval.service');
 const prompts = require('../services/ai.prompt.service');
 const releases = require('../services/ai.release.service');
 const refinement = require('../services/ai.refinement.service');
+const mcp = require('../services/mcp.service');
+const skills = require('../services/skills.service');
+const skillExecutor = require('../services/skill.executor.service');
 const router = express.Router();
 
 function requireAiGovernance(req,res,next){
@@ -15,6 +18,28 @@ function requireAiGovernance(req,res,next){
   return next();
 }
 
+
+function mcpRpcError(id,code,message){return {jsonrpc:'2.0',id,error:{code,message}};}
+router.post('/mcp',async(req,res)=>{
+ const rpc=req.body||{}; const id=rpc.id??null; const method=String(rpc.method||'');
+ try{
+  if(rpc.jsonrpc!=='2.0')return res.status(400).json(mcpRpcError(id,-32600,'Invalid Request'));
+  if(method==='tools/list')return res.json({jsonrpc:'2.0',id,result:{tools:mcp.listTools()}});
+  if(method==='tools/call'){
+   const params=rpc.params||{};
+   const result=await mcp.call(req,String(params.name||''),params.arguments||{});
+   return res.json({jsonrpc:'2.0',id,result:{content:[{type:'json',json:result}]}});
+  }
+  return res.status(404).json(mcpRpcError(id,-32601,'Method not found'));
+ }catch(error){
+  return res.status(error.status||500).json(mcpRpcError(id,-32000,error.code||error.message||'MCP_CALL_FAILED'));
+ }
+});
+router.get('/mcp/tools',(req,res)=>res.json({ok:true,correlation_id:req.correlationId,results:mcp.listTools()}));
+router.post('/mcp/call',async(req,res)=>{try{const result=await mcp.call(req,String(req.body?.name||''),req.body?.arguments||{});return res.json({ok:true,correlation_id:req.correlationId,result});}catch(error){return res.status(error.status||500).json({ok:false,error:error.code||error.message||'MCP_CALL_FAILED',correlation_id:req.correlationId});}});
+router.get('/skills',(req,res)=>res.json({ok:true,correlation_id:req.correlationId,results:skills.listSkills()}));
+router.get('/skills/:name',(req,res)=>{const skill=skills.getSkill(String(req.params.name));if(!skill)return res.status(404).json({ok:false,error:'SKILL_NOT_FOUND',correlation_id:req.correlationId});return res.json({ok:true,correlation_id:req.correlationId,skill});});
+router.post('/skills/:name/execute',async(req,res)=>{try{const result=await skillExecutor.execute(req,String(req.params.name),req.body||{});return res.json({ok:true,correlation_id:req.correlationId,...result});}catch(error){return res.status(error.status||500).json({ok:false,error:error.code||error.message||'SKILL_EXECUTION_FAILED',correlation_id:req.correlationId});}});
 
 router.get('/status', (req, res) => res.json({ ok: true, service: 'zynkronyx-ai', ...ai.status(req) }));
 
