@@ -7,6 +7,28 @@ const RadarMap = dynamic(() => import("../components/RadarMap"), { ssr:false, lo
 const API = process.env.NEXT_PUBLIC_API_URL || "https://mute-grass-9428.schrsistemas.workers.dev";
 const LGPD_POLICY_VERSION = "2026-09-19";
 const LGPD_POLICY_TYPE = "PRIVACY_NOTICE";
+const API_TIMEOUT_MS = 12000;
+
+async function fetchJson(url, options = {}, timeoutMs = API_TIMEOUT_MS) {
+  const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+  try {
+    const response = await fetch(url, controller ? { ...options, signal: controller.signal } : options);
+    const text = await response.text();
+    let data = null;
+    try { data = text ? JSON.parse(text) : {}; } catch (_) {
+      data = { error: text || "Resposta inválida do servidor." };
+    }
+    return { response, data };
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw new Error("A API demorou mais de 12 segundos para responder. Verifique a conexão e tente novamente.");
+    }
+    throw error;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
 
 function LgpdAcceptance({authVersion,onAuth}) {
   const [visible,setVisible] = useState(false);
@@ -28,7 +50,7 @@ function LgpdAcceptance({authVersion,onAuth}) {
         return;
       }
       try {
-          const r = await fetch(API + "/legal/acceptance?policy_type=" + encodeURIComponent(LGPD_POLICY_TYPE), {headers:authHeaders(),cache:"no-store"});
+          const {response:r,j} = await fetchJson(API + "/legal/acceptance?policy_type=" + encodeURIComponent(LGPD_POLICY_TYPE), {headers:authHeaders(),cache:"no-store"});
           if(r.status === 401 || r.status === 403) {
             sessionStorage.removeItem("zynkronyx_token");
             if(alive) {
@@ -39,7 +61,6 @@ function LgpdAcceptance({authVersion,onAuth}) {
             }
             return;
           }
-          const j = await r.json();
           if(alive && r.ok && j.result?.policy_version === LGPD_POLICY_VERSION && j.result?.action === "ACCEPT") {
             setVisible(false);
             setChecked(false);
@@ -58,7 +79,7 @@ function LgpdAcceptance({authVersion,onAuth}) {
     try {
       const token = sessionStorage.getItem("zynkronyx_token");
       if(!token) throw new Error("Entre na plataforma para registrar o aceite de forma auditável.");
-      const r = await fetch(API + "/legal/acceptance", {
+      const {response:r,j} = await fetchJson(API + "/legal/acceptance", {
         method:"POST",
         headers:{"Content-Type":"application/json",...authHeaders()},
         body:JSON.stringify({policy_type:LGPD_POLICY_TYPE,policy_version:LGPD_POLICY_VERSION,action:"ACCEPT",source:"control-center"})
@@ -71,7 +92,6 @@ function LgpdAcceptance({authVersion,onAuth}) {
         onAuth?.();
         return;
       }
-      const j = await r.json();
       if(!r.ok) throw new Error(j.error || j.erro || "Não foi possível registrar o aceite.");
       setVisible(false);
       setChecked(false);
