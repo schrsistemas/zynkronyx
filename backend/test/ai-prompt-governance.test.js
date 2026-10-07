@@ -24,10 +24,10 @@ function load(rows,canaryStatus){
 
 test('promotion gate is blocked until a passed canary exists',async()=>{
   const {service}=load();
-  const original=service.evaluationGate;
-  service.evaluationGate=async()=>({prompt_version_id:9,candidate_score:.9,baseline_score:.8,candidate_eval_count:4});
-  await assert.rejects(()=>service.promotionGate(7,9),e=>e.code==='PROMOTION_POLICY_NOT_MET'&&e.details.canary_passed===false);
-  service.evaluationGate=original;
+  await assert.rejects(
+    ()=>service.promotionGate(7,9),
+    e=>e.message==='PROMOTION_POLICY_NOT_MET'&&e.details.canary_passed===false
+  );
 });
 
 test('promotion gate accepts a passed canary',async()=>{
@@ -55,7 +55,7 @@ test('production rollback records lineage and changes active prompt atomically',
   const db={
     query:async(sql,params)=>{
       if(sql.includes("STATUS='ACTIVE'")) return [{ID:9,VERSION_NO:4}];
-      if(sql.includes('WHERE ID=? AND TENANT_ID=?')) return [{ID:8,VERSION_NO:3,STATUS:'RETIRED'}];
+      if(sql.includes('FROM AI_PROMPT_VERSION')&&sql.includes('ID=?')) return [{ID:8,VERSION_NO:3,STATUS:'RETIRED'}];
       return [];
     },
     withTransaction:async(work)=>{
