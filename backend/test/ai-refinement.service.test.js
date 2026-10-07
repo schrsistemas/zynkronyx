@@ -37,7 +37,7 @@ function loadService(){
         state.queries.push({sql,params});
         if(sql.startsWith('INSERT INTO AI_PROMPT_VERSION'))state.prompt={id:params[0],tenantId:params[1],versionNo:params[2],name:params[3],prompt:JSON.parse(params[4]),status:params[5]};
         if(sql.startsWith("UPDATE AI_REFINEMENT_ITEM SET STATUS='ACCEPTED'")){
-          const item=findItem(params[3],params[4]);if(item){item.STATUS='ACCEPTED';item.PROMPT_VERSION_ID=params[0];item.BASE_PROMPT_VERSION_ID=item.BASE_PROMPT_VERSION_ID??null;item.ACCEPT_IDEMPOTENCY_KEY=params[2];item.REVIEWED_BY=params[3];}
+          const item=findItem(params[3],params[4]);if(item){item.STATUS='ACCEPTED';item.PROMPT_VERSION_ID=params[0];item.BASE_PROMPT_VERSION_ID=item.BASE_PROMPT_VERSION_ID??null;item.ACCEPT_IDEMPOTENCY_KEY=params[1];item.REVIEWED_BY=params[2];}
         }
       }
     })
@@ -48,7 +48,7 @@ function loadService(){
     resolve:async()=>({ID:7,TENANT_ID:10,VERSION_NO:3,PROMPT_JSON:'{"tone":"direct"}'}),
     resolveTx:async()=>({ID:7,VERSION_NO:3,PROMPT_JSON:'{"tone":"direct"}'}),
     resolveByIdTx:async()=>({ID:7,TENANT_ID:10,VERSION_NO:3,PROMPT_JSON:'{"tone":"direct"}'}),
-    createTx:async(input)=>{state.prompt={...input,id:8};state.queries.push({sql:'INSERT INTO AI_PROMPT_VERSION',params:[8,input.tenantId,input.versionNo,input.name,JSON.stringify(input.prompt),input.status]});return 8;}
+    createTx:async(tx,input)=>{state.prompt={...input,id:8};return 8;}
   };
 
   Module._load=function(request,parent,isMain){
@@ -96,9 +96,8 @@ test('accept preserves base prompt lineage and creates draft in the same transac
   assert.equal(result.draft_prompt_id,8);
   assert.equal(result.base_prompt_id,7);
   assert.equal(result.next_version,4);
-  const promptInsert=state.queries.find(x=>x.sql.startsWith('INSERT INTO AI_PROMPT_VERSION'));
-  assert.ok(promptInsert);
-  assert.ok(promptInsert.params[5]===undefined || promptInsert.params[5]==='DRAFT');
+  assert.equal(state.prompt.status,'DRAFT');
+  assert.deepEqual(state.prompt.prompt,{tone:'concise'});
   assert.equal(result.refinement.STATUS,'ACCEPTED');
   assert.equal(result.refinement.BASE_PROMPT_VERSION_ID,7);
   assert.equal(result.refinement.PROMPT_VERSION_ID,8);
