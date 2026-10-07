@@ -65,15 +65,26 @@ export default function IntegrationsCenter() {
     <div className="panel">
       <div className="sectionTitle"><h3>Simulator — evento real</h3><span>sem dados sintéticos de sucesso</span></div>
       <form className="simulatorForm" onSubmit={send}>
-        <input value={form.device_id} onChange={e=>set("device_id",e.target.value)} placeholder="device_id registrado" required/>
-        <input value={credential} onChange={e=>setCredential(e.target.value)} placeholder="device credential" type="password" required/>
-        <select value={form.device_type} onChange={e=>set("device_type",e.target.value)}>{TYPES.map(x=><option key={x}>{x}</option>)}</select>\n        <input value={form.protocol_version} onChange={e=>set("protocol_version",e.target.value)} type="number" min="1" placeholder="protocol version"/>
-        <input value={form.operation} onChange={e=>set("operation",e.target.value)} placeholder="operation" required/>
-        <input value={form.sequence} onChange={e=>set("sequence",e.target.value)} type="number" min="1" placeholder="sequence"/>
-        <input value={form.correlation_id} onChange={e=>set("correlation_id",e.target.value)} placeholder="correlation_id (opcional)"/>
-        <input value={form.latitude} onChange={e=>set("latitude",e.target.value)} type="number" step="0.000001" placeholder="latitude (opcional)"/>
-        <input value={form.longitude} onChange={e=>set("longitude",e.target.value)} type="number" step="0.000001" placeholder="longitude (opcional)"/>
-        <textarea className="jsonEditor" value={form.payload} onChange={e=>set("payload",e.target.value)} rows={9}/>
+        <label htmlFor="integration-device-id">Device ID</label>
+        <input id="integration-device-id" value={form.device_id} onChange={e=>set("device_id",e.target.value)} placeholder="device_id registrado" required/>
+        <label htmlFor="integration-device-credential">Device credential</label>
+        <input id="integration-device-credential" value={credential} onChange={e=>setCredential(e.target.value)} placeholder="device credential" type="password" required/>
+        <label htmlFor="integration-device-type">Device type</label>
+        <select id="integration-device-type" value={form.device_type} onChange={e=>set("device_type",e.target.value)}>{TYPES.map(x=><option key={x}>{x}</option>)}</select>
+        <label htmlFor="integration-protocol-version">Protocol version</label>
+        <input id="integration-protocol-version" value={form.protocol_version} onChange={e=>set("protocol_version",e.target.value)} type="number" min="1" placeholder="protocol version"/>
+        <label htmlFor="integration-operation">Operation</label>
+        <input id="integration-operation" value={form.operation} onChange={e=>set("operation",e.target.value)} placeholder="operation" required/>
+        <label htmlFor="integration-sequence">Sequence</label>
+        <input id="integration-sequence" value={form.sequence} onChange={e=>set("sequence",e.target.value)} type="number" min="1" placeholder="sequence"/>
+        <label htmlFor="integration-correlation-id">Correlation ID (opcional)</label>
+        <input id="integration-correlation-id" value={form.correlation_id} onChange={e=>set("correlation_id",e.target.value)} placeholder="correlation_id (opcional)"/>
+        <label htmlFor="integration-latitude">Latitude (opcional)</label>
+        <input id="integration-latitude" value={form.latitude} onChange={e=>set("latitude",e.target.value)} type="number" step="0.000001" placeholder="latitude (opcional)"/>
+        <label htmlFor="integration-longitude">Longitude (opcional)</label>
+        <input id="integration-longitude" value={form.longitude} onChange={e=>set("longitude",e.target.value)} type="number" step="0.000001" placeholder="longitude (opcional)"/>
+        <label htmlFor="integration-payload">Payload JSON</label>
+        <textarea id="integration-payload" className="jsonEditor" value={form.payload} onChange={e=>set("payload",e.target.value)} rows={9}/>
         <button type="submit" disabled={loading}>{loading?"Enviando…":"Enviar evento real"}</button>
       </form>
       {result && <pre className="resultBox">{JSON.stringify(result,null,2)}</pre>}

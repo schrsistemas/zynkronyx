@@ -28,6 +28,7 @@ function loadService(){
     withTransaction:async work=>work({
       nextId:async()=>++state.nextId,
       query:async(sql,params)=>{
+        state.queries.push({sql,params});
         if(sql.includes('FROM AI_REFINEMENT_ITEM')&&sql.includes('WHERE ID=? AND TENANT_ID=?')){const item=findItem(params[0],params[1]);return item?[{...item}]:[];}
         if(sql.includes('ACCEPT_IDEMPOTENCY_KEY'))return [];
         return [];
@@ -36,7 +37,7 @@ function loadService(){
         state.queries.push({sql,params});
         if(sql.startsWith('INSERT INTO AI_PROMPT_VERSION'))state.prompt={id:params[0],tenantId:params[1],versionNo:params[2],name:params[3],prompt:JSON.parse(params[4]),status:params[5]};
         if(sql.startsWith("UPDATE AI_REFINEMENT_ITEM SET STATUS='ACCEPTED'")){
-          const item=findItem(params[2],params[4]);if(item){item.STATUS='ACCEPTED';item.PROMPT_VERSION_ID=params[0];item.BASE_PROMPT_VERSION_ID=item.BASE_PROMPT_VERSION_ID??null;item.ACCEPT_IDEMPOTENCY_KEY=params[1];item.REVIEWED_BY=params[3];}
+          const item=findItem(params[3],params[4]);if(item){item.STATUS='ACCEPTED';item.PROMPT_VERSION_ID=params[0];item.BASE_PROMPT_VERSION_ID=item.BASE_PROMPT_VERSION_ID??null;item.ACCEPT_IDEMPOTENCY_KEY=params[1];item.REVIEWED_BY=params[2];}
         }
       }
     })
@@ -47,7 +48,7 @@ function loadService(){
     resolve:async()=>({ID:7,TENANT_ID:10,VERSION_NO:3,PROMPT_JSON:'{"tone":"direct"}'}),
     resolveTx:async()=>({ID:7,VERSION_NO:3,PROMPT_JSON:'{"tone":"direct"}'}),
     resolveByIdTx:async()=>({ID:7,TENANT_ID:10,VERSION_NO:3,PROMPT_JSON:'{"tone":"direct"}'}),
-    createTx:async(input)=>{state.prompt={...input,id:8};return 8;}
+    createTx:async(tx,input)=>{state.prompt={...input,id:8};return 8;}
   };
 
   Module._load=function(request,parent,isMain){

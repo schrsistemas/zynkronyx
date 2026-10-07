@@ -5,7 +5,7 @@ const Module=require('node:module');
 function load(rows,canaryStatus){
   const original=Module._load;
   const db={
-    query:async(sql)=>sql.includes('AI_PROMPT_RELEASE')?(canaryStatus?[{ID:41,STATUS:canaryStatus}]:[]):sql.includes('AI_PROMPT_VERSION')?[{ID:9,TENANT_ID:7,VERSION_NO:4,STATUS:'DRAFT'}]:sql.includes('AI_EVAL_RUN')?[{SCORE:.9,PROMPT_VERSION_ID:9},{SCORE:.9,PROMPT_VERSION_ID:9},{SCORE:.9,PROMPT_VERSION_ID:9},{SCORE:.8,PROMPT_VERSION_ID:8}]:[],
+    query:async(sql)=>{if(sql.includes('AI_PROMPT_RELEASE'))return canaryStatus?[{ID:41,STATUS:canaryStatus}]:[];if(sql.includes('AI_EVAL_RUN'))return [{SCORE:.9,PROMPT_VERSION_ID:9},{SCORE:.9,PROMPT_VERSION_ID:9},{SCORE:.9,PROMPT_VERSION_ID:9},{SCORE:.8,PROMPT_VERSION_ID:8}];if(sql.includes('AI_PROMPT_VERSION'))return sql.includes("STATUS='ACTIVE'")?[{ID:8,TENANT_ID:7,VERSION_NO:3,STATUS:'ACTIVE'}]:[{ID:9,TENANT_ID:7,VERSION_NO:4,STATUS:'DRAFT'}];return [];},
     dialect:()=>({currentTimestamp:'CURRENT_TIMESTAMP'})
   };
   const prompts={
@@ -24,10 +24,10 @@ function load(rows,canaryStatus){
 
 test('promotion gate is blocked until a passed canary exists',async()=>{
   const {service}=load();
-  const original=service.evaluationGate;
-  service.evaluationGate=async()=>({prompt_version_id:9,candidate_score:.9,baseline_score:.8,candidate_eval_count:4});
-  await assert.rejects(()=>service.promotionGate(7,9),e=>e.code==='PROMOTION_POLICY_NOT_MET'&&e.details.canary_passed===false);
-  service.evaluationGate=original;
+  await assert.rejects(
+    ()=>service.promotionGate(7,9),
+    e=>e.message==='PROMOTION_POLICY_NOT_MET'&&e.details.canary_passed===false
+  );
 });
 
 test('promotion gate accepts a passed canary',async()=>{
@@ -55,7 +55,7 @@ test('production rollback records lineage and changes active prompt atomically',
   const db={
     query:async(sql,params)=>{
       if(sql.includes("STATUS='ACTIVE'")) return [{ID:9,VERSION_NO:4}];
-      if(sql.includes('WHERE ID=? AND TENANT_ID=?')) return [{ID:8,VERSION_NO:3,STATUS:'RETIRED'}];
+      if(sql.includes('FROM AI_PROMPT_VERSION')&&sql.includes('ID=?')) return [{ID:8,TENANT_ID:7,VERSION_NO:3,STATUS:'RETIRED'}];
       return [];
     },
     withTransaction:async(work)=>{
