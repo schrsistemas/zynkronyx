@@ -469,7 +469,7 @@ function Radar() {
  const auth=authHeaders();
  async function load(){setLoading(true);setError(null);try{const r=await fetch(API+"/integration/devices",{headers:auth,cache:"no-store"});const j=await r.json();if(!r.ok)throw new Error(j.erro||"Falha ao carregar radar");setDevices(j.devices||[])}catch(e){setError(e.message)}finally{setLoading(false)}} 
  useEffect(()=>{load();const t=setInterval(load,30000);return()=>clearInterval(t)},[]);
- const visible=devices.filter(d=>(!activeOnly||d.STATUS==="A")&&(!type||d.DEVICE_TYPE===type)&&Number.isFinite(Number(d.LAST_LATITUDE))&&Number.isFinite(Number(d.LAST_LONGITUDE)));
+ const visible=devices.filter(d=>{const latRaw=d.LAST_LATITUDE,lonRaw=d.LAST_LONGITUDE;if(latRaw===null||latRaw===undefined||lonRaw===null||lonRaw===undefined||String(latRaw).trim()===""||String(lonRaw).trim()==="")return false;const lat=Number(latRaw),lon=Number(lonRaw);return (!activeOnly||d.STATUS==="A")&&(!type||d.DEVICE_TYPE===type)&&Number.isFinite(lat)&&Number.isFinite(lon)&&lat>=-90&&lat<=90&&lon>=-180&&lon<=180;});
  return <div>
   <div className="hero"><div><span className="pill">RADAR 2.0</span><h2>Device Map</h2><p>Mapa cartográfico baseado exclusivamente nas posições reportadas pelos dispositivos.</p></div><div className="heroVersion">{visible.length}<br/><small>pontos visíveis</small></div></div>
   <div className="panel radarPanel">
