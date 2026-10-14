@@ -50,7 +50,7 @@ function LgpdAcceptance({authVersion,onAuth}) {
         return;
       }
       try {
-          const {response:r,j} = await fetchJson(API + "/legal/acceptance?policy_type=" + encodeURIComponent(LGPD_POLICY_TYPE), {headers:authHeaders(),cache:"no-store"});
+          const {response:r,data:j} = await fetchJson(API + "/legal/acceptance?policy_type=" + encodeURIComponent(LGPD_POLICY_TYPE), {headers:authHeaders(),cache:"no-store"});
           if(r.status === 401 || r.status === 403) {
             sessionStorage.removeItem("zynkronyx_token");
             if(alive) {
@@ -79,7 +79,7 @@ function LgpdAcceptance({authVersion,onAuth}) {
     try {
       const token = sessionStorage.getItem("zynkronyx_token");
       if(!token) throw new Error("Entre na plataforma para registrar o aceite de forma auditável.");
-      const {response:r,j} = await fetchJson(API + "/legal/acceptance", {
+      const {response:r,data:j} = await fetchJson(API + "/legal/acceptance", {
         method:"POST",
         headers:{"Content-Type":"application/json",...authHeaders()},
         body:JSON.stringify({policy_type:LGPD_POLICY_TYPE,policy_version:LGPD_POLICY_VERSION,action:"ACCEPT",source:"control-center"})
